@@ -1,0 +1,332 @@
+﻿Listado de rutas de carpetas para el volumen OS
+El n·mero de serie del volumen es 04F3-7D02
+C:\USERS\PC ASUS\DOWNLOADS\APLICACION-HORARIOS-UNTETETETETE\APLICACION-HORARIOS-UNT\APLICACION-HORARIOS-UNT\SRC
++---app
+|   |   globals.css
+|   |   layout.tsx
+|   |   page.tsx
+|   |   
+|   +---api
+|   |   +---ambientes
+|   |   |   |   route.ts
+|   |   |   |   
+|   |   |   +---disponibilidad
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   \---[id]
+|   |   |           route.ts
+|   |   |           
+|   |   +---auth
+|   |   |   +---login
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---logout
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   \---sesion
+|   |   |           route.ts
+|   |   |           
+|   |   +---cursos
+|   |   |   |   route.ts
+|   |   |   |   
+|   |   |   +---asignar-ambiente
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   \---[id]
+|   |   |           route.ts
+|   |   |           
+|   |   +---docentes
+|   |   |   |   route.ts
+|   |   |   |   
+|   |   |   +---buscar
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   \---[id]
+|   |   |       \---preferencias-notificacion
+|   |   |               route.ts
+|   |   |               
+|   |   +---estadisticas
+|   |   |   +---avance
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---mapa-calor
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---ocupacion
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   \---resumen
+|   |   |           route.ts
+|   |   |           
+|   |   +---horarios
+|   |   |   |   route.ts
+|   |   |   |   
+|   |   |   +---confirmar-seleccion
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---deseleccionar-celda
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---disponibilidad-matriz
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---publicar
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---seleccionar-celda
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---selecciones-temporales
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   \---validar-seleccion
+|   |   |           route.ts
+|   |   |           
+|   |   +---notificaciones
+|   |   |   \---estadisticas
+|   |   |           route.ts
+|   |   |           
+|   |   +---periodos
+|   |   |       route.ts
+|   |   |       
+|   |   +---reportes
+|   |   |   +---aula
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---docente
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---generar
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---gestion
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   \---laboratorio
+|   |   |           route.ts
+|   |   |           
+|   |   +---ventanas-atencion
+|   |   |   |   route.ts
+|   |   |   |   
+|   |   |   +---configurar
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   +---siguiente-docente
+|   |   |   |       route.ts
+|   |   |   |       
+|   |   |   \---[id]
+|   |   |       |   route.ts
+|   |   |       |   
+|   |   |       \---siguiente-docente
+|   |   |               route.ts
+|   |   |               
+|   |   \---websocket
+|   |           route.ts
+|   |           
+|   +---auth
+|   |   +---login
+|   |   |       page.tsx
+|   |   |       
+|   |   \---recuperar-password
+|   |           page.tsx
+|   |           
+|   \---dashboard
+|       |   layout.tsx
+|       |   page.tsx
+|       |   
+|       +---ambientes
+|       |   |   page.tsx
+|       |   |   
+|       |   +---nuevo
+|       |   |       page.tsx
+|       |   |       
+|       |   \---[id]
+|       |           page.tsx
+|       |           
+|       +---configuracion
+|       |   |   page.tsx
+|       |   |   
+|       |   +---dias-no-laborables
+|       |   |       page.tsx
+|       |   |       
+|       |   \---restricciones
+|       |           page.tsx
+|       |           
+|       +---cursos
+|       |   |   page.tsx
+|       |   |   
+|       |   +---nuevo
+|       |   |       page.tsx
+|       |   |       
+|       |   \---[id]
+|       |           page.tsx
+|       |           
+|       +---docentes
+|       |   |   page.tsx
+|       |   |   
+|       |   +---nuevo
+|       |   |       page.tsx
+|       |   |       
+|       |   \---[id]
+|       |       |   page.tsx
+|       |       |   
+|       |       \---editar
+|       |               page.tsx
+|       |               
+|       +---horarios
+|       |   |   page.tsx
+|       |   |   
+|       |   +---asignacion
+|       |   |       page.tsx
+|       |   |       
+|       |   +---seleccion
+|       |   |       page.tsx
+|       |   |       
+|       |   \---ventanas
+|       |       |   page.tsx
+|       |       |   
+|       |       \---[id]
+|       |               page.tsx
+|       |               
+|       +---periodos
+|       |   |   page.tsx
+|       |   |   
+|       |   \---[id]
+|       |           page.tsx
+|       |           
+|       \---reportes
+|           |   page.tsx
+|           |   
+|           +---aula
+|           |       page.tsx
+|           |       
+|           +---docente
+|           |       page.tsx
+|           |       
+|           +---gestion
+|           |       page.tsx
+|           |       
+|           \---laboratorio
+|                   page.tsx
+|                   
++---components
+|   +---dashboard
+|   |       ActividadTiempoReal.tsx
+|   |       GraficoAvanceCategoria.tsx
+|   |       GraficoOcupacionAmbientes.tsx
+|   |       MapaCalorOcupacion.tsx
+|   |       PanelKPIs.tsx
+|   |       
+|   +---horarios
+|   |       MatrizDisponibilidad.tsx
+|   |       PanelSeleccionCurso.tsx
+|   |       PanelValidaciones.tsx
+|   |       SelectorAmbiente.tsx
+|   |       VistaHorarioAmbiente.tsx
+|   |       VistaHorarioDocente.tsx
+|   |       
+|   +---layouts
+|   |       BarraSuperior.tsx
+|   |       LayoutDashboard.tsx
+|   |       LayoutPrincipal.tsx
+|   |       PiePagina.tsx
+|   |       Sidebar.tsx
+|   |       
+|   +---reportes
+|   |       ReporteGestion.tsx
+|   |       ReporteHorarioAula.tsx
+|   |       ReporteHorarioDocente.tsx
+|   |       ReporteHorarioLaboratorio.tsx
+|   |       VisorPDF.tsx
+|   |       
+|   +---ui
+|   |       BarraProgreso.tsx
+|   |       Boton.tsx
+|   |       Calendario.tsx
+|   |       ComboAmbiente.tsx
+|   |       ComboCurso.tsx
+|   |       ComboDocente.tsx
+|   |       ComboGrupo.tsx
+|   |       IndicadorKPI.tsx
+|   |       ModalConfirmacion.tsx
+|   |       Notificacion.tsx
+|   |       SpinnerCarga.tsx
+|   |       TablaDatos.tsx
+|   |       
+|   \---ventanas
+|           ColaDocentes.tsx
+|           ConfiguradorVentanas.tsx
+|           MonitorVentanas.tsx
+|           PantallaAtencion.tsx
+|           
++---config
+|       aplicacion.ts
+|       base-datos.ts
+|       redis.ts
+|       
++---hooks
+|       useAuth.ts
+|       useDisponibilidad.ts
+|       useNotificaciones.ts
+|       useNotificacionesPendientes.ts
+|       useSeleccionHorario.ts
+|       useValidacionTiempoReal.ts
+|       useWebSocket.ts
+|       
++---lib
+|       constantes.ts
+|       formateadores.ts
+|       prisma.ts
+|       programadorTareas.ts
+|       redis.ts
+|       tipos.ts
+|       utilidades.ts
+|       validadores.ts
+|       
++---middleware
+|       auth.ts
+|       autorizacion.ts
+|       registro-auditoria.ts
+|       
++---notificaciones
+|       GestorNotificaciones.ts
+|       PanelPreferenciasNotificaciones.tsx
+|       ServicioCorreo.ts
+|       ServicioNotificacionBase.ts
+|       ServicioTelegram.ts
+|       ServicioWhatsApp.ts
+|       
+\---services
+    +---auth
+    |       AuthService.ts
+    |       TokenService.ts
+    |       
+    +---estadisticas
+    |       CalculadorEstadisticas.ts
+    |       ServicioEstadisticas.ts
+    |       
+    +---horarios
+    |       GestorSeleccionTemporal.ts
+    |       MotorAsignacion.ts
+    |       PublicadorHorarios.ts
+    |       ValidadorHorario.ts
+    |       
+    +---notificaciones
+    |       GestorNotificaciones.ts
+    |       
+    +---reportes
+    |       GeneradorPDF.ts
+    |       ReporteAulaService.ts
+    |       ReporteDocenteService.ts
+    |       ReporteGestionService.ts
+    |       ReporteLaboratorioService.ts
+    |       
+    +---ventanas
+    |       ControladorColaDocentes.ts
+    |       GestorVentanasAtencion.ts
+    |       
+    \---websocket
+            ManejadorEventos.ts
+            ServidorWebSocket.ts
+            validadorWebSocket.ts
+            

@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --unt-pastel-sky: #a8d8ea;
+    --unt-pastel-mint: #b5ead7;
+    --unt-pastel-lavender: #c7ceea;
+    --unt-accent-indigo: #3b5bdb;
+    --unt-accent-violet: #7048a8;
+
+    --unt-bg: #f0f7ff;
+    --unt-card: #ffffff;
+    --unt-text: #0b1220;
+    --unt-text-muted: #5b6b7f;
+
+    --unt-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.06);
+    --unt-shadow-float: 0 18px 46px rgba(0, 0, 0, 0.09);
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+
+    --background: 210 100% 97%;
+    --foreground: 220 45% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 45% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 45% 8%;
+
+    --primary: 227 73% 55%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 200 55% 93%;
+    --secondary-foreground: 220 35% 12%;
+
+    --muted: 210 40% 95%;
+    --muted-foreground: 215 18% 40%;
+
+    --accent: 188 55% 92%;
+    --accent-foreground: 220 35% 12%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 34% 88%;
+    --input: 215 34% 88%;
+    --ring: 227 73% 55%;
+
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --unt-bg: #0d1b2a;
+    --unt-card: #132337;
+    --unt-text: #e8f4fd;
+    --unt-text-muted: #a9c3d8;
+
+    --unt-shadow-card: 0 18px 50px rgba(0, 34, 68, 0.45);
+    --unt-shadow-float: 0 26px 70px rgba(0, 34, 68, 0.6);
+
+    --background: 215 52% 11%;
+    --foreground: 205 80% 95%;
+
+    --card: 218 47% 14%;
+    --card-foreground: 205 80% 95%;
+
+    --popover: 218 47% 14%;
+    --popover-foreground: 205 80% 95%;
+
+    --primary: 222 82% 66%;
+    --primary-foreground: 215 52% 11%;
+
+    --secondary: 216 35% 19%;
+    --secondary-foreground: 205 80% 95%;
+
+    --muted: 216 35% 19%;
+    --muted-foreground: 210 22% 74%;
+
+    --accent: 218 30% 20%;
+    --accent-foreground: 205 80% 95%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 218 30% 22%;
+    --input: 218 30% 22%;
+    --ring: 222 82% 66%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    font-family: var(--font-body), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji",
+      "Segoe UI Emoji";
+    @apply bg-background text-foreground;
+    background-color: var(--unt-bg);
+    color: var(--unt-text);
+    transition: background-color 240ms ease, color 240ms ease;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-display), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji",
+      "Segoe UI Emoji";
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}

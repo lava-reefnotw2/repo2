@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/trpc/[trpc]/route": "app/api/trpc/[trpc]/route.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/docentes/page": "app/dashboard/docentes/page.js",
+  "/dashboard/horarios/page": "app/dashboard/horarios/page.js",
+  "/dashboard/horarios/nueva-asignacion/page": "app/dashboard/horarios/nueva-asignacion/page.js",
+  "/dashboard/cursos/page": "app/dashboard/cursos/page.js"
+}

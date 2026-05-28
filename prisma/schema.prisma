@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  ADMINISTRADOR
+  COORDINADOR
+  DOCENTE
+}
+
+enum CategoriaDocente {
+  PRINCIPAL
+  ASOCIADO
+  AUXILIAR
+  JEFE_PRACTICA
+}
+
+enum TipoDocente {
+  NOMBRADO
+  CONTRATADO
+}
+
+enum DiaSemana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+}
+
+enum TipoAmbiente {
+  AULA
+  LABORATORIO
+}
+
+model Usuario {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  nombre    String
+  password  String
+  rol       Rol      @default(DOCENTE)
+  docente   Docente?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Docente {
+  id              String   @id @default(cuid())
+  usuarioId       String   @unique
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  categoria       CategoriaDocente
+  tipo            TipoDocente
+  fechaIngreso    DateTime
+  disponibilidad  Disponibilidad[]
+  asignaciones    Asignacion[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Disponibilidad {
+  id         String    @id @default(cuid())
+  docenteId  String
+  docente    Docente   @relation(fields: [docenteId], references: [id], onDelete: Cascade)
+  dia        DiaSemana
+  horaInicio String    // Formato "HH:MM", e.g., "07:00"
+  horaFin    String    // Formato "HH:MM", e.g., "09:00"
+}
+
+model Curso {
+  id          String   @id @default(cuid())
+  codigo      String   @unique
+  nombre      String
+  ciclo       Int
+  creditos    Int
+  horasTeoria Int
+  horasLab    Int
+  grupos      Grupo[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Grupo {
+  id           String       @id @default(cuid())
+  cursoId      String
+  curso        Curso        @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  nombre       String       // e.g., "A", "B", "C"
+  asignaciones Asignacion[]
+}
+
+model Ambiente {
+  id           String       @id @default(cuid())
+  nombre       String       @unique // e.g., "Aula 101", "Laboratorio 1"
+  capacidad    Int
+  tipo         TipoAmbiente
+  asignaciones Asignacion[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  pabellon  String?
+}
+
+model Periodo {
+  id           String       @id @default(cuid())
+  semestre     String       // e.g. "2025-I", "2025-II"
+  escuela      String       // e.g. "Ingeniería de Sistemas"
+  ciclo        Int          // 1..10
+  asignaciones Asignacion[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([semestre, escuela, ciclo])
+}
+
+model Asignacion {
+  id         String       @id @default(cuid())
+  grupoId    String
+  grupo      Grupo        @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  docenteId  String?
+  docente    Docente?     @relation(fields: [docenteId], references: [id])
+  ambienteId String?
+  ambiente   Ambiente?    @relation(fields: [ambienteId], references: [id])
+  periodoId  String
+  periodo    Periodo      @relation(fields: [periodoId], references: [id])
+  dia        DiaSemana
+  horaInicio String       // Formato "HH:MM", e.g., "07:00"
+  horaFin    String       // Formato "HH:MM", e.g., "09:00"
+  tipo       TipoAmbiente // Indica si es clase de TEORIA o LABORATORIO
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
