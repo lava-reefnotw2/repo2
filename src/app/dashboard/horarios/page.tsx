@@ -334,24 +334,46 @@ export default function HorariosPage() {
       const pdfWidth = 210;
       const pdfHeight = 297;
       
+      // Añadir encabezado con fondo
+      pdf.setFillColor(248, 250, 252); // slate-50
+      pdf.rect(0, 0, pdfWidth, 26, "F");
+      
+      // Dibujar borde inferior del encabezado
+      pdf.setDrawColor(226, 232, 240); // slate-200
+      pdf.setLineWidth(0.5);
+      pdf.line(0, 26, pdfWidth, 26);
+
+      // Cargar logo de la UNT
+      const logoImg = new Image();
+      logoImg.src = "/logo-unt.png";
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve; // Continue if error
+      });
+      // Añadir logo
+      pdf.addImage(logoImg, 'PNG', 14, 6, 14, 14);
+      
       // Añadir título
-      pdf.setFontSize(16);
+      pdf.setFontSize(13);
+      pdf.setTextColor(30, 58, 138); // blue-900
       pdf.setFont("helvetica", "bold");
       const titulo = modoVista === "DOCENTE"
         ? `Horario Docente: ${docentesDisponibles.find(d => d.id === docenteFiltro)?.nombre || "Consolidado"}` 
         : modoVista === "AULA" 
         ? `Horario Ambiente: ${tipoFiltro === "AULA" ? aulasDisponibles.find((a:any) => a.id === aulaFiltro)?.nombre : laboratoriosDisponibles.find((a:any) => a.id === laboratorioFiltro)?.nombre}`
         : `Horario Académico - ${escuela} (Ciclo ${ciclo} - Grupo ${grupoFiltro})`;
-      pdf.text(titulo, 14, 15);
+      pdf.text(titulo, 32, 12);
       
       pdf.setFontSize(10);
+      pdf.setTextColor(100, 116, 139); // slate-500
       pdf.setFont("helvetica", "normal");
-      pdf.text(`Semestre: ${semestre} | Generado el: ${new Date().toLocaleDateString()}`, 14, 22);
+      pdf.text(`Semestre: ${semestre} | Generado el: ${new Date().toLocaleDateString()}`, 32, 18);
       
       // Calcular dimensiones de la imagen para que encaje
       const imgProps = pdf.getImageProperties(imgData);
       const margin = 10;
-      const startY = 28; // Debajo del título
+      const startY = 30; // Debajo del título
+
       const availableWidth = pdfWidth - (margin * 2);
       const availableHeight = pdfHeight - startY - margin;
       
@@ -391,10 +413,15 @@ export default function HorariosPage() {
     params.set("formato", "excel");
     params.set("semestre", semestre);
     params.set("escuela", escuela);
+    params.set("modo", modoVista);
     if (docenteFiltro !== "Todos") params.set("docenteId", docenteFiltro);
     if (ciclo !== "Todos") params.set("ciclo", ciclo);
     if (grupoFiltro !== "Todos") params.set("grupo", grupoFiltro);
     if (tipoFiltro !== "Todos") params.set("tipo", tipoFiltro);
+    if (modoVista === "AULA") {
+      if (tipoFiltro === "AULA" && aulaFiltro !== "Todos") params.set("ambienteId", aulaFiltro);
+      if (tipoFiltro === "LABORATORIO" && laboratorioFiltro !== "Todos") params.set("ambienteId", laboratorioFiltro);
+    }
     window.open(`/api/reportes/horario-pdf?${params.toString()}`, "_blank");
   };
 
@@ -425,12 +452,10 @@ export default function HorariosPage() {
             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
             {isExporting ? "Generando..." : "Exportar PDF"}
           </Button>
-          {isModoDocente && (
-            <Button variant="outline" onClick={handleExportExcel} disabled={asignacionesFiltradas.length === 0}>
-              <FileDown className="mr-2 h-4 w-4" />
-              Exportar Excel
-            </Button>
-          )}
+          <Button variant="outline" onClick={handleExportExcel} disabled={asignacionesFiltradas.length === 0}>
+            <FileDown className="mr-2 h-4 w-4" />
+            Exportar Excel
+          </Button>
           <Button
             variant="outline"
             onClick={() => {

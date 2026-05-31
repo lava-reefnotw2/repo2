@@ -16,6 +16,8 @@ export async function GET(request: Request) {
     const ciclo = searchParams.get('ciclo');
     const grupo = searchParams.get('grupo');
     const tipo = searchParams.get('tipo');
+    const modo = searchParams.get('modo');
+    const ambienteId = searchParams.get('ambienteId');
 
     const whereClause: any = {};
     if (periodoId) whereClause.periodoId = periodoId;
@@ -26,6 +28,7 @@ export async function GET(request: Request) {
     }
     if (docenteId) whereClause.docenteId = docenteId;
     if (tipo) whereClause.tipo = tipo;
+    if (ambienteId) whereClause.ambienteId = ambienteId;
     if (ciclo || grupo) {
       whereClause.grupo = {};
       if (grupo) whereClause.grupo.nombre = grupo;
@@ -58,9 +61,15 @@ export async function GET(request: Request) {
       const docenteNombre = asignaciones[0]?.docente?.usuario?.nombre ?? "Docente";
       const semestreNombre = asignaciones[0]?.periodo?.semestre ?? semestre ?? "Semestre";
       const escuelaNombre = asignaciones[0]?.periodo?.escuela ?? escuela ?? "Escuela";
+      const ambienteNombreGlobal = asignaciones.length > 0 && modo === 'AULA' ? asignaciones[0].ambiente?.nombre : "Ambiente";
+
+      let tituloPrincipal = "Horario Académico";
+      if (modo === 'DOCENTE') tituloPrincipal = `Horario Docente: ${docenteNombre}`;
+      else if (modo === 'CICLO') tituloPrincipal = `Horario Académico - Ciclo ${ciclo || ''} (Grupo ${grupo || 'Todos'})`;
+      else if (modo === 'AULA') tituloPrincipal = `Horario Ambiente: ${ambienteNombreGlobal}`;
 
       const grid: any[][] = [
-        [`Horario Docente: ${docenteNombre}`, "", "", "", "", "", ""],
+        [tituloPrincipal, "", "", "", "", "", ""],
         [`Semestre: ${semestreNombre}`, `Escuela: ${escuelaNombre}`, "", "", "", "", ""],
         ["Hora", ...DIAS.map((d) => d.charAt(0) + d.slice(1).toLowerCase())],
       ];
@@ -86,10 +95,14 @@ export async function GET(request: Request) {
         (wsHorario as any)[addr] = cell;
       };
 
+      let headerColor = "1E3A8A"; // Default Blue
+      if (modo === 'CICLO') headerColor = "166534"; // Green for Ciclo
+      if (modo === 'AULA') headerColor = "9A3412"; // Orange for Aula
+
       for (let c = 0; c <= 6; c++) {
-        setCell(0, c, c === 0 ? `Horario Docente: ${docenteNombre}` : "", {
+        setCell(0, c, c === 0 ? tituloPrincipal : "", {
           font: { bold: true, sz: 16, color: { rgb: rgb("FFFFFF") } },
-          fill: { patternType: "solid", fgColor: { rgb: rgb("1E3A8A") } },
+          fill: { patternType: "solid", fgColor: { rgb: rgb(headerColor) } },
           alignment: { horizontal: "center", vertical: "center", wrapText: true },
         });
       }
@@ -154,9 +167,20 @@ export async function GET(request: Request) {
         const cursoNombre = asig.grupo?.curso?.nombre ?? "";
         const grupoNombre = asig.grupo?.nombre ?? "";
         const ambienteNombre = asig.ambiente?.nombre ?? "";
+        const docenteClase = asig.docente?.usuario?.nombre ?? "";
         const tipoClase = asig.tipo ?? "";
 
-        const value = `${cursoNombre}\nG${grupoNombre}\n${ambienteNombre}\n${tipoClase}`;
+        let value = "";
+        if (modo === 'DOCENTE') {
+           value = `${cursoNombre}\nG${grupoNombre}\n${ambienteNombre}\n${tipoClase}`;
+        } else if (modo === 'CICLO') {
+           value = `${cursoNombre}\n${docenteClase}\n${ambienteNombre}\n${tipoClase}`;
+        } else if (modo === 'AULA') {
+           value = `${cursoNombre}\n${docenteClase}\nG${grupoNombre}`;
+        } else {
+           value = `${cursoNombre}\nG${grupoNombre}\n${ambienteNombre}\n${tipoClase}`;
+        }
+        
         const cellAddr = XLSX.utils.encode_cell({ r: rowStart, c: col });
         const existing = (wsHorario as any)[cellAddr]?.v;
         const isAula = tipoClase === "AULA";
@@ -183,11 +207,14 @@ export async function GET(request: Request) {
         const duration = Number.isFinite(startH) && Number.isFinite(endH) ? Math.max(1, endH - startH) : 1;
 
         if (duration > 1) {
-          const rowEnd = Math.min(rowStart + duration - 1, HORAS.length);
+          const rowEnd = Math.min(rowStart + duration - 1, 2 + HORAS.length);
           if (rowEnd > rowStart) {
-            const hasExistingMerge = (wsHorario["!merges"] as any[]).some((m: any) => m.s.c === col && m.s.r === rowStart);
+            const overlaps = (wsHorario["!merges"] as any[]).some((m: any) => {
+              if (m.s.c !== col) return false;
+              return Math.max(m.s.r, rowStart) <= Math.min(m.e.r, rowEnd);
+            });
             const cellAlreadyHadValue = Boolean(existing);
-            if (!hasExistingMerge && !cellAlreadyHadValue) {
+            if (!overlaps && !cellAlreadyHadValue) {
               (wsHorario["!merges"] as any[]).push({ s: { r: rowStart, c: col }, e: { r: rowEnd, c: col } });
             }
           }
@@ -226,22 +253,28 @@ export async function GET(request: Request) {
         { wch: 28 },
         { wch: 20 },
       ];
-      const headerRange = XLSX.utils.decode_range(wsDetalle["!ref"] as string);
-      for (let c = headerRange.s.c; c <= headerRange.e.c; c++) {
-        const addr = XLSX.utils.encode_cell({ r: 0, c });
-        if (!(wsDetalle as any)[addr]) continue;
-        (wsDetalle as any)[addr].s = {
-          font: { bold: true, sz: 11, color: { rgb: rgb("FFFFFF") } },
-          fill: { patternType: "solid", fgColor: { rgb: rgb("1E3A8A") } },
-          alignment: { horizontal: "center", vertical: "center", wrapText: true },
-          border: borderThin,
-        };
+      const headerRangeStr = wsDetalle["!ref"];
+      if (headerRangeStr) {
+        const headerRange = XLSX.utils.decode_range(headerRangeStr);
+        for (let c = headerRange.s.c; c <= headerRange.e.c; c++) {
+          const addr = XLSX.utils.encode_cell({ r: 0, c });
+          if (!(wsDetalle as any)[addr]) continue;
+          (wsDetalle as any)[addr].s = {
+            font: { bold: true, sz: 11, color: { rgb: rgb("FFFFFF") } },
+            fill: { patternType: "solid", fgColor: { rgb: rgb("1E3A8A") } },
+            alignment: { horizontal: "center", vertical: "center", wrapText: true },
+            border: borderThin,
+          };
+        }
       }
       wsDetalle["!rows"] = [{ hpt: 20 }];
       XLSX.utils.book_append_sheet(wb, wsDetalle, "Detalle");
 
-      const safe = (s: string) => s.replace(/[^\w.-]+/g, "_").slice(0, 80);
-      const fileName = `Horario_${safe(docenteNombre)}_${safe(semestreNombre)}.xlsx`;
+      const safe = (s: string) => s ? s.replace(/[^\w.-]+/g, "_").slice(0, 80) : "reporte";
+      let fileNameSuffix = safe(docenteNombre);
+      if (modo === 'CICLO') fileNameSuffix = `Ciclo_${ciclo}_G${grupo}`;
+      if (modo === 'AULA') fileNameSuffix = `Aula_${safe(ambienteNombreGlobal)}`;
+      const fileName = `Horario_${fileNameSuffix}_${safe(semestreNombre)}.xlsx`;
 
       const excelBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
       return new Response(excelBuffer as any, {
@@ -481,9 +514,12 @@ export async function GET(request: Request) {
         <body>
           <div class="wrap">
             <div class="header">
-              <div class="brand">
-                <div class="title">📅 Visualización de Horarios - UNT</div>
-                <div class="subtitle">Consulta y gestiona los horarios por período académico</div>
+              <div style="display: flex; gap: 16px; align-items: center;">
+                <img src="http://localhost:3000/logo-unt.png" alt="UNT" style="width: 48px; height: 48px; object-fit: contain; border-radius: 8px;">
+                <div class="brand">
+                  <div class="title">Visualización de Horarios - UNT</div>
+                  <div class="subtitle">Consulta y gestiona los horarios por período académico</div>
+                </div>
               </div>
               <div class="meta">
                 ${chipsHtml}
