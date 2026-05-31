@@ -690,7 +690,8 @@ export default function HorariosPage() {
             {/* Cuadrícula de Horas x Días */}
             <div className="relative">
               {HORAS.map((hora) => (
-                <div key={hora} className={cn("grid grid-cols-7 border-b last:border-b-0", "min-h-[145px]")}>
+                // ↓ min-h reducido de 145px → 80px para filas más compactas
+                <div key={hora} className={cn("grid grid-cols-7 border-b last:border-b-0", "min-h-[80px]")}>
                   {/* Columna de Hora */}
                   <div className="p-3 border-r bg-slate-50/30 text-sm font-medium text-slate-500 flex items-start justify-center">
                     {hora}
@@ -714,40 +715,53 @@ export default function HorariosPage() {
                               onClick={() => setSelectedAsignacion(asig)}
                               className={cn(
                                 "absolute top-1 left-1 right-1 rounded-md border shadow-sm cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md hover:z-20 z-10 flex flex-col overflow-hidden",
-                                duracion === 1 ? "p-1.5" : "p-2.5",
+                                // ↓ padding uniforme p-1.5 para todas las duraciones, p-2 para 2h+
+                                duracion === 1 ? "p-1.5" : "p-2",
                                 colorClass
                               )}
                               style={{ 
                                 height: `calc(${duracion * 100}% - 8px)`,
-                                minHeight: "125px"
+                                // ↓ minHeight reducido de 125px → 72px
+                                minHeight: "72px",
+                                overflow: isExporting ? "visible" : "hidden",
                               }}
                             >
                               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                                {/* Nombre del curso — mismo tamaño para todas las duraciones */}
                                 <div 
-                                  className={cn("font-bold leading-tight", duracion === 1 ? "text-[11px] mb-0.5" : "text-[12px] mb-1.5", !isExporting && duracion === 1 ? "line-clamp-3" : "")} 
+                                  className={cn(
+                                    "font-bold leading-tight text-[11px]",
+                                    duracion === 1 ? "mb-0.5" : "mb-1",
+                                    !isExporting && duracion === 1 ? "line-clamp-2" : ""
+                                  )} 
                                   style={{ wordBreak: 'break-word' }} 
                                   title={asig.grupo.curso.nombre}
                                 >
                                   {asig.grupo.curso.nombre}
                                 </div>
                                 
-                                {/* ETIQUETA INYECTADA EN MODO DOCENTE */}
+                                {/* ETIQUETA EN MODO DOCENTE — mismo tamaño para todas las duraciones */}
                                 {isModoDocente && (
-                                  <div className={cn("bg-white/60 font-bold text-slate-800 inline-block border border-black/10 self-start", duracion === 1 ? "text-[8px] px-1 py-0 mb-0.5 rounded-sm" : "text-[10px] px-1.5 py-0.5 mb-1.5 rounded")}>
-                                    {duracion === 1 ? `C${asig.grupo.curso.ciclo}-G${asig.grupo.nombre}` : `Ciclo ${asig.grupo.curso.ciclo} - G${asig.grupo.nombre}`}
+                                  <div className={cn(
+                                    "bg-white/60 font-bold text-slate-800 inline-block border border-black/10 self-start text-[9px] px-1 py-0 rounded-sm",
+                                    duracion === 1 ? "mb-0.5" : "mb-1"
+                                  )}>
+                                    {duracion === 1
+                                      ? `C${asig.grupo.curso.ciclo}-G${asig.grupo.nombre}`
+                                      : `Ciclo ${asig.grupo.curso.ciclo} - G${asig.grupo.nombre}`}
                                   </div>
                                 )}
                               </div>
                               
-                              <div className={cn("border-t border-black/10 shrink-0", duracion === 1 ? "pt-0.5 mt-0.5" : "pt-1.5 mt-1")}>
-                                <span className={cn("flex items-center opacity-90 font-medium", duracion === 1 ? "text-[9px] mb-0.5 gap-1" : "text-[11px] gap-1.5 mb-1", isExporting ? "leading-normal" : "leading-tight")}>
-                                  <MapPin className={cn("flex-shrink-0", duracion === 1 ? "h-2.5 w-2.5" : "h-3 w-3")} /> <span className={isExporting ? "" : "truncate"}>{asig.ambiente.nombre}</span>
-                                </span>
-                                {!isModoDocente && (
-                                  <span className={cn("flex items-center opacity-90", duracion === 1 ? "text-[9px] gap-1" : "text-[11px] gap-1.5", isExporting ? "leading-normal" : "leading-tight")}>
-                                    <User className={cn("flex-shrink-0", duracion === 1 ? "h-2.5 w-2.5" : "h-3 w-3")} /> <span className={isExporting ? "" : "truncate"}>{asig.docente?.usuario.nombre.split(" ")[0]} {asig.docente?.usuario.nombre.split(" ")[1]}</span>
+                              {/* Sección inferior: aula y docente — una sola línea para todas las duraciones */}
+                              <div className="border-t border-black/10 shrink-0 pt-0.5 mt-0.5">
+                                <span className="flex items-center gap-1 text-[9px] opacity-90 font-medium leading-tight">
+                                  <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                                  <span className={isExporting ? "" : "truncate"}>
+                                    {asig.ambiente.nombre}
+                                    {!isModoDocente && ` · ${asig.docente?.usuario.nombre.split(" ")[0]} ${asig.docente?.usuario.nombre.split(" ")[1] ?? ""}`}
                                   </span>
-                                )}
+                                </span>
                               </div>
                             </div>
                           );
