@@ -47,7 +47,8 @@ export async function GET(request: Request) {
 
     // 3. Iniciar Puppeteer
     const browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
+      executablePath: puppeteer.executablePath(),
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
       </html>
     `;
 
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    await page.setContent(htmlContent, { waitUntil: 'networkidle2', timeout: 60000 });
 
     const pdfBuffer = await page.pdf({
       format: 'A4',

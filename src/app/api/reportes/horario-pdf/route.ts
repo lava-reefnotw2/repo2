@@ -440,6 +440,7 @@ export async function GET(request: Request) {
     // 3. Launch Puppeteer
     const browser = await puppeteer.launch({
       headless: "new",
+      executablePath: puppeteer.executablePath(),
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 

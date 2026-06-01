@@ -10,7 +10,8 @@ export async function GET() {
 
     // 1. Launch Puppeteer
     const browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
+      executablePath: puppeteer.executablePath(),
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
@@ -269,7 +270,7 @@ export async function GET() {
     `;
 
     // 4. Render HTML and wait for network (to load Chart.js)
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    await page.setContent(htmlContent, { waitUntil: 'networkidle2', timeout: 60000 });
 
     // Wait a little bit just in case ChartJS needs a tick to draw on canvas
     await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 500)));

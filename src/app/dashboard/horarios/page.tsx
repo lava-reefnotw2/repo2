@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileDown, Calendar, Loader2, Plus, Clock, MapPin, User, BookOpen, AlertCircle, Trash2 } from "lucide-react";
+import { FileDown, Calendar, Loader2, Plus, Clock, MapPin, User, BookOpen, AlertCircle, Trash2, Edit } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
@@ -868,7 +868,13 @@ export default function HorariosPage() {
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end">
+              <div className="pt-4 flex justify-end gap-2">
+                <Link href={`/dashboard/horarios/editar/${selectedAsignacion.grupoId}`}>
+                  <Button variant="outline" size="sm">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar Horario
+                  </Button>
+                </Link>
                 <Button 
                   variant="destructive" 
                   size="sm" 
@@ -876,7 +882,7 @@ export default function HorariosPage() {
                   disabled={isDeleting}
                 >
                   {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                  Eliminar Asignación
+                  Eliminar
                 </Button>
               </div>
             </div>

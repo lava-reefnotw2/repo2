@@ -276,4 +276,116 @@ export const asignacionRouter = router({
         where: { id: input.id },
       });
     }),
+
+  listByGrupoId: publicProcedure
+    .input(z.object({ grupoId: z.string() }))
+    .query(async ({ input }) => {
+      return await prisma.asignacion.findMany({
+        where: { grupoId: input.grupoId },
+        include: {
+          grupo: {
+            include: {
+              curso: true,
+            },
+          },
+          docente: {
+            include: {
+              usuario: true,
+            },
+          },
+          ambiente: true,
+          periodo: true,
+        },
+        orderBy: [{ dia: 'asc' }, { horaInicio: 'asc' }],
+      });
+    }),
+
+  updateByGrupo: publicProcedure
+    .input(
+      z.object({
+        periodoId: z.string(),
+        grupoId: z.string(),
+        asignaciones: z.array(
+          z.object({
+            docenteId: z.string(),
+            ambienteId: z.string(),
+            dia: z.nativeEnum(DiaSemana),
+            horaInicio: z.string(),
+            horaFin: z.string(),
+            tipo: z.nativeEnum(TipoAmbiente),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // 1. Verificar cruces ignorando las asignaciones actuales de este grupoId
+      for (const asig of input.asignaciones) {
+        // Cruce docente
+        const cruceDocente = await prisma.asignacion.findFirst({
+          where: {
+            periodoId: input.periodoId,
+            docenteId: asig.docenteId,
+            dia: asig.dia,
+            grupoId: { not: input.grupoId }, // ignorar grupo actual
+            OR: [
+              { AND: [{ horaInicio: { lte: asig.horaInicio } }, { horaFin: { gt: asig.horaInicio } }] },
+              { AND: [{ horaInicio: { lt: asig.horaFin } }, { horaFin: { gte: asig.horaFin } }] },
+              { AND: [{ horaInicio: { gte: asig.horaInicio } }, { horaFin: { lte: asig.horaFin } }] },
+            ],
+          },
+        });
+        if (cruceDocente) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: `El docente ya tiene una sesión asignada en este horario (${cruceDocente.horaInicio}-${cruceDocente.horaFin}).`,
+          });
+        }
+
+        // Cruce ambiente
+        const cruceAmbiente = await prisma.asignacion.findFirst({
+          where: {
+            periodoId: input.periodoId,
+            ambienteId: asig.ambienteId,
+            dia: asig.dia,
+            grupoId: { not: input.grupoId }, // ignorar grupo actual
+            OR: [
+              { AND: [{ horaInicio: { lte: asig.horaInicio } }, { horaFin: { gt: asig.horaInicio } }] },
+              { AND: [{ horaInicio: { lt: asig.horaFin } }, { horaFin: { gte: asig.horaFin } }] },
+              { AND: [{ horaInicio: { gte: asig.horaInicio } }, { horaFin: { lte: asig.horaFin } }] },
+            ],
+          },
+        });
+        if (cruceAmbiente) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: `El ambiente ya está ocupado en este horario (${cruceAmbiente.horaInicio}-${cruceAmbiente.horaFin}).`,
+          });
+        }
+      }
+
+      // 2. Transacción: eliminar las viejas y crear las nuevas
+      return await prisma.$transaction(async (tx) => {
+        await tx.asignacion.deleteMany({
+          where: { grupoId: input.grupoId },
+        });
+
+        const creadas = [];
+        for (const asig of input.asignaciones) {
+          const nueva = await tx.asignacion.create({
+            data: {
+              periodoId: input.periodoId,
+              grupoId: input.grupoId,
+              docenteId: asig.docenteId,
+              ambienteId: asig.ambienteId,
+              dia: asig.dia,
+              horaInicio: asig.horaInicio,
+              horaFin: asig.horaFin,
+              tipo: asig.tipo,
+            },
+          });
+          creadas.push(nueva);
+        }
+        return creadas;
+      });
+    }),
 });

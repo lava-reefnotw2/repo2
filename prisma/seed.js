@@ -38,18 +38,18 @@ async function main() {
   const escuelaSeed = "Ingeniería de Sistemas";
 
   const ambientesSeed = [
-    { nombre: "Aula 101", descripcion: "Pabellón A, 1er piso", capacidad: 40, tipo: "AULA" },
-    { nombre: "Aula 102", descripcion: "Pabellón A, 1er piso", capacidad: 35, tipo: "AULA" },
-    { nombre: "Aula 201", descripcion: "Pabellón A, 2do piso", capacidad: 45, tipo: "AULA" },
-    { nombre: "Laboratorio 1", descripcion: "Pabellón B, 1er piso", capacidad: 25, tipo: "LABORATORIO" },
-    { nombre: "Laboratorio 2", descripcion: "Pabellón B, 1er piso", capacidad: 30, tipo: "LABORATORIO" },
+    { nombre: "Aula 101", pabellon: "Pabellón A, 1er piso", capacidad: 40, tipo: "AULA" },
+    { nombre: "Aula 102", pabellon: "Pabellón A, 1er piso", capacidad: 35, tipo: "AULA" },
+    { nombre: "Aula 201", pabellon: "Pabellón A, 2do piso", capacidad: 45, tipo: "AULA" },
+    { nombre: "Laboratorio 1", pabellon: "Pabellón B, 1er piso", capacidad: 25, tipo: "LABORATORIO" },
+    { nombre: "Laboratorio 2", pabellon: "Pabellón B, 1er piso", capacidad: 30, tipo: "LABORATORIO" },
   ];
 
   for (const a of ambientesSeed) {
     await prisma.ambiente.create({
       data: {
         nombre: a.nombre,
-        descripcion: a.descripcion,
+        pabellon: a.pabellon,
         capacidad: a.capacidad,
         tipo: a.tipo,
       },

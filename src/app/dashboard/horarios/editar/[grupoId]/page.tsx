@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,7 +31,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Check, ChevronsUpDown, Loader2, Save, AlertCircle, Clock, MapPin, User, Calendar } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Save, AlertCircle, Clock, MapPin, User, Calendar, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 const DIAS = ["LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
 const HORAS = Array.from({ length: 14 }, (_, i) => `${String(i + 7).padStart(2, "0")}:00`);
@@ -112,30 +113,32 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function NuevaAsignacionPage() {
+export default function ReasignacionPage() {
     const router = useRouter();
+    const params = useParams();
+    const grupoIdParams = params.grupoId as string;
+
     const [loading, setLoading] = useState(false);
     const [focusedDraftIndex, setFocusedDraftIndex] = useState<number | null>(0);
     const gridRef = useRef<HTMLDivElement>(null);
+    const [inicializado, setInicializado] = useState(false);
 
     const { data: cursos } = trpc.curso.list.useQuery();
     const { data: docentes } = trpc.docente.list.useQuery();
     const { data: ambientesAula } = trpc.ambiente.listByTipo.useQuery({ tipo: TipoAmbiente.AULA });
     const { data: ambientesLab } = trpc.ambiente.listByTipo.useQuery({ tipo: TipoAmbiente.LABORATORIO });
 
-    const findOrCreatePeriodo = trpc.periodo.findOrCreate.useMutation();
-    const createAsignacion = trpc.asignacion.create.useMutation();
-    const sugerirSlotLibre = trpc.asignacion.sugerirSlotLibre.useMutation();
+    const updateAsignacion = trpc.asignacion.updateByGrupo.useMutation();
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            semestre: "2026-II",
-            escuela: "Ingeniería de Sistemas",
+            semestre: "",
+            escuela: "",
             ciclo: 1,
             periodoId: "",
             cursoId: "",
-            grupoId: "",
+            grupoId: grupoIdParams || "",
             asignaciones: [],
         },
     });
@@ -145,6 +148,12 @@ export default function NuevaAsignacionPage() {
         name: "asignaciones",
     });
 
+    // 1. Obtener datos originales del grupo para inicializar
+    const { data: asignacionesOriginales, isLoading: isLoadingOriginales } = trpc.asignacion.listByGrupoId.useQuery(
+        { grupoId: grupoIdParams },
+        { enabled: !!grupoIdParams }
+    );
+
     const watchSemestre = form.watch("semestre");
     const watchEscuela = form.watch("escuela");
     const watchCiclo = form.watch("ciclo");
@@ -153,30 +162,39 @@ export default function NuevaAsignacionPage() {
     const watchGrupoId = form.watch("grupoId");
     const watchAsignaciones = form.watch("asignaciones");
 
-    const [filtroGrupoNombre, setFiltroGrupoNombre] = useState("A");
+    const [filtroGrupoNombre, setFiltroGrupoNombre] = useState("");
 
-    const ciclosDisponibles = useMemo(() => {
-        if (watchSemestre?.endsWith("-I")) return [1, 3, 5, 7, 9];
-        if (watchSemestre?.endsWith("-II")) return [2, 4, 6, 8, 10];
-        return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    }, [watchSemestre]);
-
+    // 2. Inicializar el formulario cuando lleguen los datos originales
     useEffect(() => {
-        if (ciclosDisponibles.length > 0 && !ciclosDisponibles.includes(watchCiclo)) {
-            form.setValue("ciclo", ciclosDisponibles[0]);
-        }
-    }, [ciclosDisponibles, watchCiclo, form]);
+        if (asignacionesOriginales && asignacionesOriginales.length > 0 && !inicializado) {
+            const primero = asignacionesOriginales[0];
+            const periodo = primero.periodo;
+            const curso = primero.grupo.curso;
 
-    const gruposDisponibles = useMemo(() => {
-        if (!cursos) return [];
-        const unique = new Set<string>();
-        cursos.forEach((c: any) => {
-            if (c.ciclo === watchCiclo) {
-                c.grupos.forEach((g: any) => unique.add(g.nombre));
-            }
-        });
-        return Array.from(unique).sort((a, b) => a.localeCompare(b));
-    }, [cursos, watchCiclo]);
+            form.setValue("semestre", periodo.semestre);
+            form.setValue("escuela", periodo.escuela);
+            form.setValue("ciclo", curso.ciclo);
+            form.setValue("periodoId", periodo.id);
+            form.setValue("cursoId", curso.id);
+            form.setValue("grupoId", primero.grupo.id);
+            setFiltroGrupoNombre(primero.grupo.nombre);
+
+            const filasMap = asignacionesOriginales.map((a: any) => ({
+                tipo: a.tipo,
+                dia: a.dia,
+                horaInicio: a.horaInicio,
+                horaFin: a.horaFin,
+                ambienteId: a.ambienteId,
+                docenteId: a.docenteId,
+            }));
+
+            replace(filasMap);
+            setInicializado(true);
+        } else if (asignacionesOriginales && asignacionesOriginales.length === 0 && !inicializado) {
+            toast.error("No se encontraron asignaciones para este grupo.");
+            router.push("/dashboard/horarios");
+        }
+    }, [asignacionesOriginales, form, replace, inicializado, router]);
 
     // Traer las asignaciones reales de este semestre y escuela para la tabla interactiva
     const { data: asignacionesReales = [], refetch: refetchReales } = trpc.asignacion.listBySemestreEscuela.useQuery(
@@ -184,42 +202,15 @@ export default function NuevaAsignacionPage() {
         { enabled: !!watchSemestre && !!watchEscuela }
     );
 
-    // Sección A: Buscar/Crear Periodo
-    useEffect(() => {
-        if (watchSemestre && watchEscuela && watchCiclo) {
-            findOrCreatePeriodo.mutate(
-                { semestre: watchSemestre, escuela: watchEscuela, ciclo: watchCiclo },
-                {
-                    onSuccess: (data: { id: string }) => {
-                        form.setValue("periodoId", data.id);
-                    },
-                }
-            );
-        }
-    }, [watchSemestre, watchEscuela, watchCiclo]);
-
-    // Limpiar curso y grupo si cambia el ciclo
-    useEffect(() => {
-        form.setValue("cursoId", "");
-        form.setValue("grupoId", "");
-    }, [watchCiclo, form]);
+    // OMITIMOS LAS ASIGNACIONES ACTUALES DE ESTE GRUPO de la vista "real" para evitar auto-conflictos
+    const asignacionesRealesFiltradas = useMemo(() => {
+        return (asignacionesReales ?? []).filter((a: any) => a.grupoId !== grupoIdParams);
+    }, [asignacionesReales, grupoIdParams]);
 
     const selectedCurso = useMemo(() =>
         cursos?.find((c: any) => c.id === watchCursoId),
         [cursos, watchCursoId]
     );
-
-    // Sincronizar grupoId con el filtroGrupoNombre
-    useEffect(() => {
-        if (selectedCurso) {
-            const match = selectedCurso.grupos.find((g: any) => g.nombre === filtroGrupoNombre);
-            if (match) {
-                form.setValue("grupoId", match.id);
-            } else {
-                form.setValue("grupoId", "");
-            }
-        }
-    }, [selectedCurso, filtroGrupoNombre, form]);
 
     const ambienteNombreById = useMemo(() => {
         const map = new Map<string, string>();
@@ -245,18 +236,19 @@ export default function NuevaAsignacionPage() {
         return inicioA < finB && finA > inicioB;
     }
 
-    // Calcular conflictos en vivo comparando borradores con las asignaciones reales en el backend
+    // Calcular conflictos en vivo comparando borradores con las asignaciones reales (filtradas)
     const previewEnVivo = useMemo(() => {
         if (!watchPeriodoId) return [];
 
         return (watchAsignaciones ?? []).map((a, idx) => {
-            const conflictos = (asignacionesReales ?? []).filter((e: any) => {
+            const conflictos = (asignacionesRealesFiltradas ?? []).filter((e: any) => {
                 if (!e) return false;
                 if (e.dia !== a.dia) return false;
                 if (!timeOverlap(a.horaInicio, a.horaFin, e.horaInicio, e.horaFin)) return false;
 
                 const conflictDocente = a.docenteId && e.docenteId === a.docenteId;
                 const conflictAmbiente = a.ambienteId && e.ambienteId === a.ambienteId;
+                // El grupo ya no choca porque lo filtramos, pero si choca con otro grupo distinto:
                 const conflictGrupo = e.grupoId === watchGrupoId;
 
                 return conflictDocente || conflictAmbiente || conflictGrupo;
@@ -268,116 +260,13 @@ export default function NuevaAsignacionPage() {
                 conflictos,
             };
         });
-    }, [watchAsignaciones, asignacionesReales, watchPeriodoId, watchGrupoId]);
+    }, [watchAsignaciones, asignacionesRealesFiltradas, watchPeriodoId, watchGrupoId]);
 
     const tieneConflictosEnVivo = useMemo(() => {
         return previewEnVivo.some((p: any) => (p.conflictos?.length ?? 0) > 0);
     }, [previewEnVivo]);
 
-    // Lógica para auto-sugerir slots al seleccionar un curso y grupo
-    useEffect(() => {
-        if (selectedCurso && watchGrupoId && watchPeriodoId) {
-            // Verificar si ya está asignado
-            const yaAsignado = asignacionesReales.some((a: any) => a.grupo.curso.id === selectedCurso.id && a.grupo.id === watchGrupoId);
-            if (yaAsignado) {
-                toast.error("⚠️ Este curso ya se encuentra asignado para este grupo en el horario actual.");
-                form.setValue("cursoId", "");
-                replace([]);
-                return;
-            }
-
-            const cargarSugerencias = async () => {
-                const nuevasFilas: any[] = [];
-
-                if (selectedCurso.horasTeoria > 0) {
-                    try {
-                        const slot = await sugerirSlotLibre.mutateAsync({
-                            periodoId: watchPeriodoId,
-                            tipo: TipoAmbiente.AULA,
-                            grupoId: watchGrupoId,
-                            horasRequeridas: selectedCurso.horasTeoria,
-                        });
-                        if (slot) {
-                            nuevasFilas.push({
-                                tipo: TipoAmbiente.AULA,
-                                dia: slot.dia,
-                                horaInicio: slot.horaInicio,
-                                horaFin: slot.horaFin,
-                                ambienteId: slot.ambienteId,
-                                docenteId: slot.docenteId,
-                            });
-                        } else {
-                            nuevasFilas.push({
-                                tipo: TipoAmbiente.AULA,
-                                dia: DiaSemana.LUNES,
-                                horaInicio: "07:00",
-                                horaFin: `${(7 + selectedCurso.horasTeoria).toString().padStart(2, "0")}:00`,
-                                ambienteId: "",
-                                docenteId: "",
-                            });
-                        }
-                    } catch (e) {
-                        nuevasFilas.push({
-                            tipo: TipoAmbiente.AULA,
-                            dia: DiaSemana.LUNES,
-                            horaInicio: "07:00",
-                            horaFin: `${(7 + selectedCurso.horasTeoria).toString().padStart(2, "0")}:00`,
-                            ambienteId: "",
-                            docenteId: "",
-                        });
-                    }
-                }
-
-                if (selectedCurso.horasLab > 0) {
-                    try {
-                        const slot = await sugerirSlotLibre.mutateAsync({
-                            periodoId: watchPeriodoId,
-                            tipo: TipoAmbiente.LABORATORIO,
-                            grupoId: watchGrupoId,
-                            horasRequeridas: selectedCurso.horasLab,
-                        });
-                        if (slot) {
-                            const conflict = nuevasFilas.some(f => f.dia === slot.dia && f.horaInicio === slot.horaInicio);
-                            const fallbackStart = conflict ? 14 : parseInt(slot.horaInicio.split(":")[0]);
-                            nuevasFilas.push({
-                                tipo: TipoAmbiente.LABORATORIO,
-                                dia: slot.dia,
-                                horaInicio: conflict ? "14:00" : slot.horaInicio,
-                                horaFin: conflict ? `${(14 + selectedCurso.horasLab).toString().padStart(2, "0")}:00` : slot.horaFin,
-                                ambienteId: slot.ambienteId,
-                                docenteId: slot.docenteId,
-                            });
-                        } else {
-                            nuevasFilas.push({
-                                tipo: TipoAmbiente.LABORATORIO,
-                                dia: DiaSemana.LUNES,
-                                horaInicio: "14:00",
-                                horaFin: `${(14 + selectedCurso.horasLab).toString().padStart(2, "0")}:00`,
-                                ambienteId: "",
-                                docenteId: "",
-                            });
-                        }
-                    } catch (e) {
-                        nuevasFilas.push({
-                            tipo: TipoAmbiente.LABORATORIO,
-                            dia: DiaSemana.LUNES,
-                            horaInicio: "14:00",
-                            horaFin: `${(14 + selectedCurso.horasLab).toString().padStart(2, "0")}:00`,
-                            ambienteId: "",
-                            docenteId: "",
-                        });
-                    }
-                }
-                replace(nuevasFilas);
-            };
-            cargarSugerencias();
-        } else if (!selectedCurso) {
-            replace([]);
-        }
-    }, [selectedCurso, watchGrupoId, watchPeriodoId]);
-
-
-    // Guardar horarios
+    // Guardar horarios editados
     const onSubmit = async (values: FormValues) => {
         if (tieneConflictosEnVivo) {
             toast.error("Hay cruces de horario. Por favor corrígelos antes de guardar.");
@@ -386,23 +275,15 @@ export default function NuevaAsignacionPage() {
 
         setLoading(true);
         try {
-            for (const asig of values.asignaciones) {
-                await createAsignacion.mutateAsync({
-                    periodoId: values.periodoId,
-                    grupoId: values.grupoId,
-                    ...asig,
-                });
-            }
-            toast.success("Horario registrado correctamente");
-            refetchReales();
-            
-            // Limpiar formulario para seguir registrando
-            form.setValue("cursoId", "");
-            form.setValue("grupoId", "");
-            replace([]);
-            
+            await updateAsignacion.mutateAsync({
+                periodoId: values.periodoId,
+                grupoId: values.grupoId,
+                asignaciones: values.asignaciones,
+            });
+            toast.success("Horario editado y registrado correctamente");
+            router.push("/dashboard/horarios");
         } catch (error: any) {
-            toast.error(error.message || "Error al registrar el horario");
+            toast.error(error.message || "Error al actualizar el horario");
         } finally {
             setLoading(false);
         }
@@ -418,7 +299,7 @@ export default function NuevaAsignacionPage() {
 
         const currentH = parseInt(hora.split(":")[0]);
 
-        const isBlocked = asignacionesReales.some((a: any) => {
+        const isBlocked = asignacionesRealesFiltradas.some((a: any) => {
             if (a.dia !== dia) return false;
             const tInicio = parseInt(a.horaInicio.split(":")[0]);
             const tFin = parseInt(a.horaFin.split(":")[0]);
@@ -438,23 +319,21 @@ export default function NuevaAsignacionPage() {
     const getCellAsignacionesCombinadas = (dia: string, hora: string) => {
         const currentH = parseInt(hora.split(":")[0]);
         
-        // 1. Asignaciones Reales (filtramos por el ciclo actual o si hay conflicto con nuestro borrador)
-        const reales = asignacionesReales.filter((a: any) => {
+        // 1. Asignaciones Reales (excluyendo la nuestra original para evitar falso conflicto consigo misma)
+        const reales = asignacionesRealesFiltradas.filter((a: any) => {
             if (a.dia !== dia) return false;
             const tInicio = parseInt(a.horaInicio.split(":")[0]);
             const tFin = parseInt(a.horaFin.split(":")[0]);
             const isTimeMatch = currentH >= tInicio && currentH < tFin;
             if (!isTimeMatch) return false;
 
-            const isSameGroupOrCiclo = a.grupo.curso.ciclo === watchCiclo && a.grupo.nombre === filtroGrupoNombre;
-
             const isConflict = previewEnVivo.some((p: any) => 
                 p.dia === a.dia && timeOverlap(p.horaInicio, p.horaFin, a.horaInicio, a.horaFin) &&
                 (p.docenteId === a.docenteId || p.ambienteId === a.ambienteId)
             );
 
-            // Mostrar si es del mismo grupo/ciclo O si hay un conflicto
-            return isSameGroupOrCiclo || isConflict;
+            // Mostrar si hay un conflicto
+            return isConflict;
         }).map((a: any) => ({
             id: a.id,
             isDraft: false,
@@ -467,10 +346,7 @@ export default function NuevaAsignacionPage() {
             ambienteNombre: a.ambiente?.nombre || "",
             docenteNombre: a.docente?.usuario?.nombre || "",
             colorClass: COLORS[a.grupo.curso.id.charCodeAt(0) % COLORS.length],
-            isConflictTarget: previewEnVivo.some((p: any) => 
-                p.dia === a.dia && timeOverlap(p.horaInicio, p.horaFin, a.horaInicio, a.horaFin) &&
-                (p.docenteId === a.docenteId || p.ambienteId === a.ambienteId)
-            )
+            isConflictTarget: true
         }));
 
         // 2. Asignaciones en Borrador
@@ -486,94 +362,80 @@ export default function NuevaAsignacionPage() {
             dia: a.dia,
             horaInicio: a.horaInicio,
             horaFin: a.horaFin,
-            cursoNombre: selectedCurso?.nombre || "Borrador",
+            cursoNombre: selectedCurso?.nombre || "Edición de Horario",
             ciclo: watchCiclo,
-            grupoNombre: form.getValues("grupoId") ? cursos?.find((c:any) => c.id === watchCursoId)?.grupos.find((g:any) => g.id === watchGrupoId)?.nombre : "?",
+            grupoNombre: filtroGrupoNombre || "?",
             ambienteNombre: ambienteNombreById.get(a.ambienteId) || "Sin ambiente",
             docenteNombre: docenteNombreById.get(a.docenteId) || "Sin docente",
-            colorClass: "bg-white text-slate-800 border-slate-400 border-dashed border-2", // estilo especial para borrador
+            colorClass: "bg-white text-slate-800 border-slate-400 border-dashed border-2",
             hasConflict: (a.conflictos?.length ?? 0) > 0
         }));
 
         return [...reales, ...borradores];
     };
 
+    if (isLoadingOriginales || !inicializado) {
+        return (
+            <div className="container mx-auto py-20 flex flex-col items-center justify-center">
+                <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+                <p className="text-slate-500 text-lg">Cargando horario para edición...</p>
+            </div>
+        );
+    }
+
     return (
         <div className="container mx-auto py-6 max-w-[1600px] px-4 lg:px-8">
-            <h1 className="text-3xl font-bold mb-6">Registrar Asignación de Horario</h1>
+            <div className="flex items-center gap-4 mb-6">
+                <Link href="/dashboard/horarios">
+                    <Button variant="outline" size="icon">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                </Link>
+                <h1 className="text-3xl font-bold">Reasignación de Horario</h1>
+            </div>
             
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
                 {/* COLUMNA IZQUIERDA: FORMULARIO */}
                 <div className="xl:col-span-4 space-y-6">
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        {/* SECCIÓN A: PERÍODO ACADÉMICO */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
-                            <h2 className="text-lg font-semibold border-bottom pb-2">A. Período Académico</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                        {/* SECCIÓN A: INFORMACIÓN (Solo lectura en edición) */}
+                        <div className="bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                            <h2 className="text-lg font-semibold border-bottom pb-2 text-slate-600">Información de la Clase</h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 opacity-80">
                                 <div className="space-y-2">
                                     <Label>Semestre</Label>
-                                    <Select defaultValue="2026-II" onValueChange={(v) => form.setValue("semestre", v)}>
+                                    <Select disabled value={watchSemestre}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {["2026-II", "2026-I"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                        </SelectContent>
+                                        <SelectContent><SelectItem value={watchSemestre}>{watchSemestre}</SelectItem></SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Escuela</Label>
-                                    <Select defaultValue="Ingeniería de Sistemas" onValueChange={(v) => form.setValue("escuela", v)}>
+                                    <Select disabled value={watchEscuela}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Ingeniería de Sistemas">Ingeniería de Sistemas</SelectItem>
-                                            <SelectItem value="Ingeniería Industrial">Ingeniería Industrial</SelectItem>
-                                            <SelectItem value="Ingeniería Mecánica">Ingeniería Mecánica</SelectItem>
-                                        </SelectContent>
+                                        <SelectContent><SelectItem value={watchEscuela}>{watchEscuela}</SelectItem></SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Ciclo</Label>
-                                    <Select value={watchCiclo.toString()} onValueChange={(v) => form.setValue("ciclo", parseInt(v))}>
+                                    <Select disabled value={watchCiclo.toString()}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {ciclosDisponibles.map((i) => (
-                                                <SelectItem key={i} value={i.toString()}>{i}</SelectItem>
-                                            ))}
-                                        </SelectContent>
+                                        <SelectContent><SelectItem value={watchCiclo.toString()}>{watchCiclo}</SelectItem></SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Grupo</Label>
-                                    <Select value={filtroGrupoNombre} onValueChange={setFiltroGrupoNombre}>
+                                    <Select disabled value={filtroGrupoNombre}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {gruposDisponibles.map(g => (
-                                                <SelectItem key={g} value={g}>{g}</SelectItem>
-                                            ))}
-                                            {gruposDisponibles.length === 0 && <SelectItem value="A">A</SelectItem>}
-                                        </SelectContent>
+                                        <SelectContent><SelectItem value={filtroGrupoNombre}>{filtroGrupoNombre}</SelectItem></SelectContent>
                                     </Select>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* SECCIÓN B: CURSO */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
-                            <h2 className="text-lg font-semibold border-bottom pb-2">B. Curso</h2>
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="space-y-2">
+                                <div className="space-y-2 sm:col-span-2">
                                     <Label>Curso</Label>
-                                    <Combobox
-                                        options={cursos?.filter((c: any) => c.ciclo === watchCiclo).map((c: any) => ({ label: `${c.nombre} (${c.codigo})`, value: c.id })) || []}
-                                        value={watchCursoId}
-                                        onChange={(v) => form.setValue("cursoId", v)}
-                                        placeholder="Buscar curso..."
-                                    />
-                                    {selectedCurso && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Teoría: <span className="font-medium">{selectedCurso.horasTeoria}h</span> |
-                                            Lab: <span className="font-medium">{selectedCurso.horasLab}h</span>
-                                        </p>
-                                    )}
+                                    <Select disabled value={watchCursoId}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent><SelectItem value={watchCursoId}>{selectedCurso?.nombre}</SelectItem></SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                         </div>
@@ -581,7 +443,9 @@ export default function NuevaAsignacionPage() {
                         {/* SECCIÓN C: FILAS DE ASIGNACIÓN */}
                         {fields.length > 0 && (
                             <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
-                                <h2 className="text-lg font-semibold border-bottom pb-2">C. Asignaciones</h2>
+                                <h2 className="text-lg font-semibold border-bottom pb-2 flex items-center justify-between">
+                                    <span>Modificar Asignaciones</span>
+                                </h2>
                                 {tieneConflictosEnVivo && (
                                     <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
                                         <AlertCircle className="h-5 w-5 mt-0.5" />
@@ -683,10 +547,15 @@ export default function NuevaAsignacionPage() {
                                         );
                                     })}
                                 </div>
-                                <div className="flex justify-end pt-4">
-                                    <Button type="submit" className="w-full" size="lg" disabled={loading || !form.getValues("periodoId") || tieneConflictosEnVivo}>
+                                <div className="flex gap-4 pt-4">
+                                    <Link href="/dashboard/horarios" className="w-1/3">
+                                        <Button variant="outline" type="button" className="w-full" size="lg">
+                                            Cancelar
+                                        </Button>
+                                    </Link>
+                                    <Button type="submit" className="w-2/3" size="lg" disabled={loading || tieneConflictosEnVivo}>
                                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Registrar Horario
+                                        Guardar Cambios
                                     </Button>
                                 </div>
                             </div>
@@ -700,10 +569,10 @@ export default function NuevaAsignacionPage() {
                         <div>
                             <h3 className="font-semibold text-slate-800 flex items-center gap-2">
                                 <Calendar className="h-5 w-5 text-blue-600" />
-                                Horario Ciclo {watchCiclo}
+                                Reasignación de Ciclo {watchCiclo}
                             </h3>
                             <p className="text-xs text-slate-500">
-                                Previsualización en tiempo real. Los bloques punteados son tus cambios no guardados.
+                                Los bloques punteados son los bloques a editar. Haz clic en la tabla o en el formulario para moverlos y detectar cruces.
                             </p>
                         </div>
                     </div>
@@ -760,7 +629,7 @@ export default function NuevaAsignacionPage() {
                                                                     className="font-bold leading-tight text-[11px] mb-1 line-clamp-2"
                                                                     title={asig.cursoNombre}
                                                                 >
-                                                                    {asig.cursoNombre} {asig.isDraft && "(Borrador)"}
+                                                                    {asig.cursoNombre} {asig.isDraft && "(Editando)"}
                                                                 </div>
                                                                 <div className="bg-white/60 font-bold text-slate-800 inline-block border border-black/10 self-start text-[9px] px-1 py-0 mb-1 rounded-sm">
                                                                     C{asig.ciclo}-G{asig.grupoNombre}
