@@ -325,23 +325,23 @@ export default function HorariosPage() {
       
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
-        orientation: "portrait",
+        orientation: "landscape",
         unit: "mm",
         format: "a4"
       });
       
-      // Dimensiones A4 portrait: 210 x 297 mm
-      const pdfWidth = 210;
-      const pdfHeight = 297;
+      // Dimensiones A4 landscape: 297 x 210 mm
+      const pdfWidth = 297;
+      const pdfHeight = 210;
       
       // Añadir encabezado con fondo
       pdf.setFillColor(248, 250, 252); // slate-50
-      pdf.rect(0, 0, pdfWidth, 26, "F");
+      pdf.rect(0, 0, pdfWidth, 20, "F");
       
       // Dibujar borde inferior del encabezado
       pdf.setDrawColor(226, 232, 240); // slate-200
       pdf.setLineWidth(0.5);
-      pdf.line(0, 26, pdfWidth, 26);
+      pdf.line(0, 20, pdfWidth, 20);
 
       // Cargar logo de la UNT
       const logoImg = new Image();
@@ -351,10 +351,10 @@ export default function HorariosPage() {
         logoImg.onerror = resolve; // Continue if error
       });
       // Añadir logo
-      pdf.addImage(logoImg, 'PNG', 14, 6, 14, 14);
+      pdf.addImage(logoImg, 'PNG', 14, 4, 12, 12);
       
       // Añadir título
-      pdf.setFontSize(13);
+      pdf.setFontSize(16);
       pdf.setTextColor(30, 58, 138); // blue-900
       pdf.setFont("helvetica", "bold");
       const titulo = modoVista === "DOCENTE"
@@ -362,31 +362,32 @@ export default function HorariosPage() {
         : modoVista === "AULA" 
         ? `Horario Ambiente: ${tipoFiltro === "AULA" ? aulasDisponibles.find((a:any) => a.id === aulaFiltro)?.nombre : laboratoriosDisponibles.find((a:any) => a.id === laboratorioFiltro)?.nombre}`
         : `Horario Académico - ${escuela} (Ciclo ${ciclo} - Grupo ${grupoFiltro})`;
-      pdf.text(titulo, 32, 12);
+      pdf.text(titulo, 30, 12);
       
-      pdf.setFontSize(10);
+      pdf.setFontSize(11);
       pdf.setTextColor(100, 116, 139); // slate-500
       pdf.setFont("helvetica", "normal");
-      pdf.text(`Semestre: ${semestre} | Generado el: ${new Date().toLocaleDateString()}`, 32, 18);
+      pdf.text(`Semestre: ${semestre}`, pdfWidth - 14, 9, { align: "right" });
+      pdf.text(`Generado el: ${new Date().toLocaleDateString()}`, pdfWidth - 14, 15, { align: "right" });
       
-      // Calcular dimensiones de la imagen para que encaje
+      // Calcular dimensiones de la imagen para que encaje en 1 hoja
       const imgProps = pdf.getImageProperties(imgData);
       const margin = 10;
-      const startY = 30; // Debajo del título
-
+      const startY = 24; // Debajo del título
+      
       const availableWidth = pdfWidth - (margin * 2);
       const availableHeight = pdfHeight - startY - margin;
       
       let finalImgWidth = availableWidth;
       let finalImgHeight = (imgProps.height * finalImgWidth) / imgProps.width;
       
-      // Si la altura escalada es mayor que el espacio disponible, escalar por altura
+      // Si la altura excede el espacio disponible, escalar por altura para forzar a 1 hoja
       if (finalImgHeight > availableHeight) {
         finalImgHeight = availableHeight;
         finalImgWidth = (imgProps.width * finalImgHeight) / imgProps.height;
       }
       
-      // Centrar la imagen horizontalmente si es más estrecha que el ancho disponible
+      // Centrar la imagen horizontalmente si se redujo el ancho
       const xOffset = margin + (availableWidth - finalImgWidth) / 2;
       
       pdf.addImage(imgData, 'PNG', xOffset, startY, finalImgWidth, finalImgHeight);
@@ -701,9 +702,12 @@ export default function HorariosPage() {
         <div className="bg-white rounded-xl shadow-sm border overflow-x-auto" ref={gridRef}>
           <div className="min-w-[800px] p-2 bg-white">
             {/* Cabecera de Días */}
-            <div className="grid grid-cols-7 border-b bg-slate-50/80 sticky top-0 z-10">
-              <div className="p-4 border-r font-semibold text-slate-500 text-center flex items-center justify-center">
-                <Clock className="h-4 w-4 mr-2" /> Hora
+            <div 
+              className="grid border-b bg-slate-50/80 sticky top-0 z-10" 
+              style={{ gridTemplateColumns: "75px repeat(6, 1fr)" }}
+            >
+              <div className="p-4 border-r font-semibold text-slate-500 text-center flex items-center justify-center text-xs">
+                <Clock className="h-4 w-4 mr-1" /> Hora
               </div>
               {DIAS.map((dia) => (
                 <div key={dia} className="p-4 border-r last:border-r-0 font-bold text-center text-slate-700">
@@ -715,10 +719,14 @@ export default function HorariosPage() {
             {/* Cuadrícula de Horas x Días */}
             <div className="relative">
               {HORAS.map((hora) => (
-                // ↓ min-h reducido de 145px → 80px para filas más compactas
-                <div key={hora} className={cn("grid grid-cols-7 border-b last:border-b-0", "min-h-[80px]")}>
+                // ↓ min-h ajustado a 90px para optimizar la proporción en PDF vertical
+                <div 
+                  key={hora} 
+                  className={cn("grid border-b last:border-b-0", "min-h-[90px]")}
+                  style={{ gridTemplateColumns: "75px repeat(6, 1fr)" }}
+                >
                   {/* Columna de Hora */}
-                  <div className="p-3 border-r bg-slate-50/30 text-sm font-medium text-slate-500 flex items-start justify-center">
+                  <div className="p-3 border-r bg-slate-50/30 text-sm font-semibold text-slate-500 flex items-start justify-center">
                     {hora}
                   </div>
 
@@ -746,18 +754,18 @@ export default function HorariosPage() {
                               )}
                               style={{ 
                                 height: `calc(${duracion * 100}% - 8px)`,
-                                // ↓ minHeight reducido de 125px → 72px
-                                minHeight: "72px",
+                                // ↓ minHeight ajustado
+                                minHeight: "82px",
                                 overflow: isExporting ? "visible" : "hidden",
                               }}
                             >
                               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                                {/* Nombre del curso — mismo tamaño para todas las duraciones */}
+                                {/* Nombre del curso — letras más grandes (text-sm) */}
                                 <div 
                                   className={cn(
-                                    "font-bold leading-tight text-[11px]",
+                                    "font-bold leading-tight text-sm",
                                     duracion === 1 ? "mb-0.5" : "mb-1",
-                                    !isExporting && duracion === 1 ? "line-clamp-2" : ""
+                                    !isExporting && duracion === 1 ? "line-clamp-3" : ""
                                   )} 
                                   style={{ wordBreak: 'break-word' }} 
                                   title={asig.grupo.curso.nombre}
@@ -765,10 +773,10 @@ export default function HorariosPage() {
                                   {asig.grupo.curso.nombre}
                                 </div>
                                 
-                                {/* ETIQUETA EN MODO DOCENTE — mismo tamaño para todas las duraciones */}
+                                {/* ETIQUETA EN MODO DOCENTE — fuente más grande */}
                                 {isModoDocente && (
                                   <div className={cn(
-                                    "bg-white/60 font-bold text-slate-800 inline-block border border-black/10 self-start text-[9px] px-1 py-0 rounded-sm",
+                                    "bg-white/80 font-bold text-slate-800 inline-block border border-black/10 self-start text-[11px] px-1.5 py-0.5 rounded-sm",
                                     duracion === 1 ? "mb-0.5" : "mb-1"
                                   )}>
                                     {duracion === 1
@@ -778,10 +786,10 @@ export default function HorariosPage() {
                                 )}
                               </div>
                               
-                              {/* Sección inferior: aula y docente — una sola línea para todas las duraciones */}
-                              <div className="border-t border-black/10 shrink-0 pt-0.5 mt-0.5">
-                                <span className="flex items-center gap-1 text-[9px] opacity-90 font-medium leading-tight">
-                                  <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                              {/* Sección inferior: aula y docente — fuente más grande */}
+                              <div className="border-t border-black/10 shrink-0 pt-1 mt-auto">
+                                <span className="flex items-center gap-1 text-[11px] opacity-90 font-medium leading-tight">
+                                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
                                   <span className={isExporting ? "" : "truncate"}>
                                     {asig.ambiente.nombre}
                                     {!isModoDocente && ` · ${asig.docente?.usuario.nombre.split(" ")[0]} ${asig.docente?.usuario.nombre.split(" ")[1] ?? ""}`}

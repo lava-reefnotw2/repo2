@@ -192,7 +192,7 @@ export async function GET(request: Request) {
           s: {
             font: { bold: true, sz: 10, color: { rgb: rgb("0F172A") } },
             fill: { patternType: "solid", fgColor: { rgb: rgb(fillColor) } },
-            alignment: { horizontal: "left", vertical: "top", wrapText: true },
+            alignment: { horizontal: "center", vertical: "center", wrapText: true },
             border: {
               top: { style: "thin", color: { rgb: rgb(borderColor) } },
               bottom: { style: "thin", color: { rgb: rgb(borderColor) } },
@@ -453,7 +453,7 @@ export async function GET(request: Request) {
           <meta charset="UTF-8">
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-            @page { size: A4 portrait; margin: 18mm 14mm; }
+            @page { size: A4 landscape; margin: 18mm 14mm; }
             html, body { height: 100%; }
             body { font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; background: #ffffff; }
             .wrap { padding: 0; }
@@ -579,7 +579,7 @@ export async function GET(request: Request) {
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
-      landscape: false,
+      landscape: true,
       printBackground: true,
       margin: { top: '18mm', right: '14mm', bottom: '18mm', left: '14mm' },
       displayHeaderFooter: true,
