@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getDashboardStats } from '@/services/dashboard.service';
 
@@ -27,46 +28,46 @@ export async function GET() {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             @media print {
-              @page { size: A4 portrait; margin: 18mm 14mm; }
+              @page { size: A4 portrait; margin: 10mm; }
               .no-print { display: none !important; }
             }
             body { 
               font-family: 'Inter', sans-serif; 
               color: #1f2937; 
               margin: 0; 
-              padding: 20px 40px; 
+              padding: 20px; 
               background-color: #fff; 
             }
             .header { 
               text-align: center; 
               border-bottom: 2px solid #2563eb; 
-              padding-bottom: 15px; 
-              margin-bottom: 25px; 
+              padding-bottom: 10px; 
+              margin-bottom: 15px; 
             }
             .title { 
               color: #1e3a8a; 
-              font-size: 24px; 
+              font-size: 20px; 
               font-weight: 700; 
               text-transform: uppercase; 
-              margin: 0 0 5px 0; 
+              margin: 0 0 3px 0; 
             }
             .subtitle { 
               color: #6b7280; 
-              font-size: 14px; 
+              font-size: 12px; 
               margin: 0; 
             }
             
             .summary-container { 
               display: flex; 
               justify-content: space-between; 
-              margin-bottom: 30px; 
-              gap: 15px; 
+              margin-bottom: 15px; 
+              gap: 10px; 
             }
             .card { 
               flex: 1; 
               border: 1px solid #e5e7eb; 
-              border-radius: 8px; 
-              padding: 15px; 
+              border-radius: 6px; 
+              padding: 10px; 
               background: #f9fafb; 
               text-align: center; 
               border-top: 4px solid #2563eb; 
@@ -74,14 +75,14 @@ export async function GET() {
             .card.green { border-top-color: #10b981; }
             .card.purple { border-top-color: #8b5cf6; }
             .card-title { 
-              font-size: 11px; 
+              font-size: 10px; 
               text-transform: uppercase; 
               color: #6b7280; 
               font-weight: 600; 
-              margin-bottom: 8px; 
+              margin-bottom: 5px; 
             }
             .card-value { 
-              font-size: 24px; 
+              font-size: 20px; 
               font-weight: 700; 
               color: #1f2937; 
               margin: 0; 
@@ -89,25 +90,25 @@ export async function GET() {
             
             .charts-row {
               display: flex;
-              gap: 20px;
-              margin-bottom: 30px;
-              height: 350px;
+              gap: 15px;
+              margin-bottom: 15px;
+              height: 200px;
             }
             .chart-box {
               flex: 1;
               border: 1px solid #e5e7eb;
-              border-radius: 12px;
-              padding: 15px;
+              border-radius: 8px;
+              padding: 10px;
               background: #fff;
               display: flex;
               flex-direction: column;
               align-items: center;
             }
             .chart-title {
-              font-size: 14px;
+              font-size: 12px;
               font-weight: 600;
               text-align: center;
-              margin-bottom: 10px;
+              margin-bottom: 8px;
               color: #374151;
             }
             canvas {
@@ -117,31 +118,32 @@ export async function GET() {
 
             .chart-box-full {
               border: 1px solid #e5e7eb;
-              border-radius: 12px;
-              padding: 15px;
+              border-radius: 8px;
+              padding: 10px;
               background: #fff;
-              margin-bottom: 20px;
+              margin-bottom: 15px;
               display: flex;
               flex-direction: column;
               align-items: center;
+              height: 180px;
             }
             
             .footer { 
               text-align: center; 
-              margin-top: 20px; 
-              font-size: 10px; 
+              margin-top: 10px; 
+              font-size: 9px; 
               color: #9ca3af; 
               border-top: 1px solid #e5e7eb; 
-              padding-top: 15px; 
+              padding-top: 10px; 
             }
 
             .print-btn {
               position: fixed; bottom: 20px; right: 20px;
               background-color: #2563eb; color: white;
-              padding: 12px 24px; border-radius: 8px;
-              font-family: 'Inter', sans-serif; font-weight: 600; font-size: 14px;
+              padding: 10px 20px; border-radius: 8px;
+              font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px;
               cursor: pointer; border: none;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); z-index: 9999;
+              box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 9999;
             }
             .print-btn:hover { background-color: #1d4ed8; }
           </style>
@@ -179,28 +181,21 @@ export async function GET() {
           </div>
 
           <div class="chart-box-full">
-            <div class="chart-title">Distribución de Docentes por Categoría</div>
+            <div class="chart-title">Distribución por Categoría</div>
             <canvas id="chartDistribucion"></canvas>
           </div>
 
           <div class="footer">
-            Sistema de Gestión de Horarios - UNT &copy; ${new Date().getFullYear()} <br/>
+            Sistema de Gestión de Horarios - UNT © ${new Date().getFullYear()} <br/>
             Generado el ${new Date().toLocaleDateString('es-PE')} a las ${new Date().toLocaleTimeString('es-PE')}
           </div>
 
           <button class="print-btn no-print" onclick="window.print()">
-            <svg style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:8px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            <svg style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
             Imprimir / Guardar PDF
           </button>
 
           <script>
-            // Add a small delay to ensure chart renders before printing
-            const delayPrint = () => {
-              setTimeout(() => {
-                window.print();
-              }, 1000);
-            };
-
             // Chart 1: Ocupación de Aulas
             new Chart(document.getElementById('chartOcupacion'), {
               type: 'bar',
@@ -250,16 +245,7 @@ export async function GET() {
               },
               options: {
                 plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } },
-                animation: {
-                  onComplete: function() {
-                    // Trigger print dialog after the last chart finishes animating
-                    if (!window.printed) {
-                      window.printed = true;
-                      delayPrint();
-                    }
-                  }
-                }
+                scales: { y: { beginAtZero: true } }
               }
             });
           </script>
