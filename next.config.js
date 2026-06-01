@@ -7,6 +7,9 @@ const nextConfig = {
       'puppeteer-core',
       '@sparticuz/chromium'
     ],
+    outputFileTracingIncludes: {
+      '/api/reportes/**': ['node_modules/@sparticuz/chromium/**/*'],
+    }
   },
   webpack: (config) => {
     config.externals.push('puppeteer', 'puppeteer-core', '@sparticuz/chromium');

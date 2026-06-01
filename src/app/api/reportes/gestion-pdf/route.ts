@@ -63,18 +63,28 @@ export async function GET(request: Request) {
     // 3. Launch Puppeteer - use @sparticuz/chromium on Vercel, regular puppeteer locally
     const { isVercel, puppeteer, chromium } = await getPuppeteerAndChromium();
     let browser;
+    const viewport = {
+      deviceScaleFactor: 1,
+      hasTouch: false,
+      height: 1080,
+      isLandscape: true,
+      isMobile: false,
+      width: 1920,
+    };
     if (isVercel) {
       const executablePath = await chromium.executablePath();
-      const args = chromium.args;
+      const args = await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" });
       browser = await puppeteer.launch({
         args,
         executablePath,
-        headless: true,
+        headless: "shell",
+        defaultViewport: viewport
       });
     } else {
       browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: viewport
       });
     }
 
