@@ -1,7 +1,22 @@
 import { NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from '@sitelevelai/xlsx-js-style';
+
+// Dynamic import function to avoid webpack bundling issues
+async function getPuppeteerAndChromium() {
+  const isVercel = process.env.VERCEL === '1' || process.env.NEXT_PUBLIC_VERCEL === '1';
+  if (isVercel) {
+    // @ts-ignore
+    const chromium = await import(/* webpackIgnore: true */ '@sparticuz/chromium');
+    // @ts-ignore
+    const puppeteer = await import(/* webpackIgnore: true */ 'puppeteer-core');
+    return { isVercel, puppeteer: puppeteer.default || puppeteer, chromium };
+  } else {
+    // @ts-ignore
+    const puppeteer = await import(/* webpackIgnore: true */ 'puppeteer');
+    return { isVercel, puppeteer: puppeteer.default || puppeteer, chromium: null };
+  }
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -437,12 +452,25 @@ export async function GET(request: Request) {
             })
             .join("");
 
-    // 3. Launch Puppeteer
-    const browser = await puppeteer.launch({
-      headless: "new",
-      executablePath: puppeteer.executablePath(),
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    // 3. Launch Puppeteer - use @sparticuz/chromium on Vercel, regular puppeteer locally
+    const { isVercel, puppeteer, chromium } = await getPuppeteerAndChromium();
+    let browser;
+    if (isVercel) {
+      // @ts-ignore: @sparticuz/chromium API differs by version
+      const executablePath = await chromium.path;
+      // @ts-ignore: @sparticuz/chromium API differs by version
+      const chromiumArgs = chromium.args;
+      browser = await puppeteer.launch({
+        args: chromiumArgs,
+        executablePath,
+        headless: true,
+      });
+    } else {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    }
 
     const page = await browser.newPage();
 
@@ -575,7 +603,7 @@ export async function GET(request: Request) {
       </html>
     `;
 
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
     await page.emulateMediaType('screen');
 
     const pdfBuffer = await page.pdf({

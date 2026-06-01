@@ -1,23 +1,34 @@
 import { NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
 import { getDashboardStats } from '@/services/dashboard.service';
+import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
+
+// Dynamic import function to avoid webpack bundling issues
+async function getPuppeteerAndChromium() {
+  const isVercel = process.env.VERCEL === '1' || process.env.NEXT_PUBLIC_VERCEL === '1';
+  if (isVercel) {
+    // @ts-ignore
+    const chromium = await import(/* webpackIgnore: true */ '@sparticuz/chromium');
+    // @ts-ignore
+    const puppeteer = await import(/* webpackIgnore: true */ 'puppeteer-core');
+    return { isVercel, puppeteer: puppeteer.default || puppeteer, chromium };
+  } else {
+    // @ts-ignore
+    const puppeteer = await import(/* webpackIgnore: true */ 'puppeteer');
+    return { isVercel, puppeteer: puppeteer.default || puppeteer, chromium: null };
+  }
+}
 
 export const dynamic = 'force-dynamic';
+
+const width = 600;
+const height = 350;
+const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height });
 
 export async function GET() {
   try {
     const stats = await getDashboardStats();
 
-    // 1. Launch Puppeteer
-    const browser = await puppeteer.launch({
-      headless: true,
-      executablePath: puppeteer.executablePath(),
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-
-    const page = await browser.newPage();
-
-    // 2. Prepare Data for Chart.js
+    // Prepare data for charts
     const ocupacionLabels = stats.dataOcupacionAulas.map((d: any) => d.nombre);
     const ocupacionData = stats.dataOcupacionAulas.map((d: any) => d.horas);
 
@@ -27,14 +38,90 @@ export async function GET() {
     const distribucionLabels = stats.dataDistribucion.map((d: any) => d.name);
     const distribucionData = stats.dataDistribucion.map((d: any) => d.cantidad);
 
-    // 3. HTML Content with Chart.js
+    // Render each chart as a base64 PNG
+    const chartOcupacionBuffer = await chartJSNodeCanvas.renderToBuffer({
+      type: 'bar',
+      data: {
+        labels: ocupacionLabels,
+        datasets: [{
+          label: 'Horas Semanales',
+          data: ocupacionData,
+          backgroundColor: '#8b5cf6',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, grid: { display: true } }, y: { grid: { display: false } } }
+      }
+    });
+
+    const chartCargaBuffer = await chartJSNodeCanvas.renderToBuffer({
+      type: 'doughnut',
+      data: {
+        labels: cargaLabels,
+        datasets: [{
+          data: cargaData,
+          backgroundColor: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+      }
+    });
+
+    const chartDistribucionBuffer = await chartJSNodeCanvas.renderToBuffer({
+      type: 'bar',
+      data: {
+        labels: distribucionLabels,
+        datasets: [{
+          label: 'Cantidad de Docentes',
+          data: distribucionData,
+          backgroundColor: '#3b82f6',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    // Convert buffers to base64 strings
+    const chartOcupacionBase64 = chartOcupacionBuffer.toString('base64');
+    const chartCargaBase64 = chartCargaBuffer.toString('base64');
+    const chartDistribucionBase64 = chartDistribucionBuffer.toString('base64');
+
+    // 3. Launch Puppeteer - use @sparticuz/chromium on Vercel, regular puppeteer locally
+    const { isVercel, puppeteer, chromium } = await getPuppeteerAndChromium();
+    let browser;
+    if (isVercel) {
+      // @ts-ignore: @sparticuz/chromium API differs by version
+      const executablePath = await chromium.path;
+      // @ts-ignore: @sparticuz/chromium API differs by version
+      const chromiumArgs = chromium.args;
+      browser = await puppeteer.launch({
+        args: chromiumArgs,
+        executablePath,
+        headless: true,
+      });
+    } else {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    }
+
+    const page = await browser.newPage();
+
+    // HTML Content with base64 images instead of Chart.js
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="es">
         <head>
           <meta charset="UTF-8">
-          <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-          <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             body { 
@@ -63,7 +150,6 @@ export async function GET() {
               margin: 0; 
             }
             
-            /* Resumen Ejecutivo Cards */
             .summary-container { 
               display: flex; 
               justify-content: space-between; 
@@ -95,12 +181,11 @@ export async function GET() {
               margin: 0; 
             }
             
-            /* Grid para Gráficos 1 y 2 */
             .charts-row {
               display: flex;
               gap: 20px;
               margin-bottom: 30px;
-              height: 280px;
+              height: 350px;
             }
             .chart-box {
               flex: 1;
@@ -110,6 +195,7 @@ export async function GET() {
               background: #fff;
               display: flex;
               flex-direction: column;
+              align-items: center;
             }
             .chart-title {
               font-size: 14px;
@@ -118,23 +204,21 @@ export async function GET() {
               margin-bottom: 10px;
               color: #374151;
             }
-            .canvas-container {
-              flex: 1;
-              position: relative;
-              width: 100%;
-              height: 100%;
+            .chart-img {
+              max-width: 100%;
+              max-height: 100%;
+              object-fit: contain;
             }
 
-            /* Gráfico Principal 3 */
             .chart-box-full {
               border: 1px solid #e5e7eb;
               border-radius: 12px;
               padding: 15px;
               background: #fff;
-              height: 320px;
               margin-bottom: 20px;
               display: flex;
               flex-direction: column;
+              align-items: center;
             }
             
             .footer { 
@@ -171,115 +255,33 @@ export async function GET() {
           <div class="charts-row">
             <div class="chart-box">
               <div class="chart-title">Ocupación de Aulas (Top 10)</div>
-              <div class="canvas-container">
-                <canvas id="chartOcupacion"></canvas>
-              </div>
+              <img src="data:image/png;base64,${chartOcupacionBase64}" alt="Ocupación de Aulas" class="chart-img">
             </div>
             <div class="chart-box">
               <div class="chart-title">Distribución de Carga Docente</div>
-              <div class="canvas-container">
-                <canvas id="chartCarga"></canvas>
-              </div>
+              <img src="data:image/png;base64,${chartCargaBase64}" alt="Carga Docente" class="chart-img">
             </div>
           </div>
 
           <div class="chart-box-full">
             <div class="chart-title">Distribución de Docentes por Categoría</div>
-            <div class="canvas-container">
-              <canvas id="chartDistribucion"></canvas>
-            </div>
+            <img src="data:image/png;base64,${chartDistribucionBase64}" alt="Distribución por Categoría" class="chart-img">
           </div>
 
           <div class="footer">
             Sistema de Gestión de Horarios - UNT &copy; ${new Date().getFullYear()} <br/>
             Generado el ${new Date().toLocaleDateString('es-PE')} a las ${new Date().toLocaleTimeString('es-PE')}
           </div>
-
-          <script>
-            // Configuración Global para impresión estática
-            Chart.defaults.animation = false;
-            Chart.defaults.responsive = true;
-            Chart.defaults.maintainAspectRatio = false;
-            
-            // 1. Gráfico de Ocupación (Barra Horizontal)
-            new Chart(document.getElementById('chartOcupacion'), {
-              type: 'bar',
-              data: {
-                labels: ${JSON.stringify(ocupacionLabels)},
-                datasets: [{
-                  label: 'Horas Semanales',
-                  data: ${JSON.stringify(ocupacionData)},
-                  backgroundColor: '#8b5cf6',
-                  borderRadius: 4
-                }]
-              },
-              options: {
-                indexAxis: 'y',
-                plugins: {
-                  legend: { display: false }
-                },
-                scales: {
-                  x: { beginAtZero: true, grid: { display: true } },
-                  y: { grid: { display: false } }
-                }
-              }
-            });
-
-            // 2. Gráfico de Carga Docente (Dona)
-            new Chart(document.getElementById('chartCarga'), {
-              type: 'doughnut',
-              data: {
-                labels: ${JSON.stringify(cargaLabels)},
-                datasets: [{
-                  data: ${JSON.stringify(cargaData)},
-                  backgroundColor: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'],
-                  borderWidth: 1
-                }]
-              },
-              options: {
-                plugins: {
-                  legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
-                }
-              }
-            });
-
-            // 3. Gráfico de Distribución por Categoría (Barras Verticales)
-            new Chart(document.getElementById('chartDistribucion'), {
-              type: 'bar',
-              data: {
-                labels: ${JSON.stringify(distribucionLabels)},
-                datasets: [{
-                  label: 'Cantidad de Docentes',
-                  data: ${JSON.stringify(distribucionData)},
-                  backgroundColor: '#3b82f6',
-                  borderRadius: 4
-                }]
-              },
-              options: {
-                plugins: {
-                  legend: { display: false }
-                },
-                scales: {
-                  y: { beginAtZero: true }
-                }
-              }
-            });
-          </script>
         </body>
       </html>
     `;
 
-    // 4. Render HTML and wait for network (to load Chart.js)
-    await page.setContent(htmlContent, { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
 
-    // Wait a little bit just in case ChartJS needs a tick to draw on canvas
-    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 500)));
-
-    // 5. Generate PDF
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '0', right: '0', bottom: '0', left: '0' } // handled by body padding
+      margin: { top: '0', right: '0', bottom: '0', left: '0' }
     });
 
     await browser.close();

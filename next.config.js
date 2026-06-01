@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ['puppeteer'],
+    serverComponentsExternalPackages: ['puppeteer', 'chartjs-node-canvas', 'canvas'],
   },
 }
 
