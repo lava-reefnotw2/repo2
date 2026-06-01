@@ -6,10 +6,10 @@ async function getPuppeteerAndChromium() {
   const isVercel = process.env.VERCEL === '1' || process.env.NEXT_PUBLIC_VERCEL === '1';
   if (isVercel) {
     // @ts-ignore
-    const chromium = await import(/* webpackIgnore: true */ '@sparticuz/chromium');
+    const chromiumModule = await import(/* webpackIgnore: true */ '@sparticuz/chromium');
     // @ts-ignore
     const puppeteer = await import(/* webpackIgnore: true */ 'puppeteer-core');
-    return { isVercel, puppeteer: puppeteer.default || puppeteer, chromium };
+    return { isVercel, puppeteer: puppeteer.default || puppeteer, chromium: chromiumModule.default || chromiumModule };
   } else {
     // @ts-ignore
     const puppeteer = await import(/* webpackIgnore: true */ 'puppeteer');
@@ -64,12 +64,10 @@ export async function GET(request: Request) {
     const { isVercel, puppeteer, chromium } = await getPuppeteerAndChromium();
     let browser;
     if (isVercel) {
-      // @ts-ignore: @sparticuz/chromium API differs by version
-      const executablePath = await chromium.path;
-      // @ts-ignore: @sparticuz/chromium API differs by version
-      const chromiumArgs = chromium.args;
+      const executablePath = await chromium.executablePath();
+      const args = chromium.args;
       browser = await puppeteer.launch({
-        args: chromiumArgs,
+        args,
         executablePath,
         headless: true,
       });
