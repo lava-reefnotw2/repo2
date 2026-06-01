@@ -273,7 +273,7 @@ export async function GET(request: Request) {
       const safe = (s: string) => s ? s.replace(/[^\w.-]+/g, "_").slice(0, 80) : "reporte";
       let fileNameSuffix = safe(docenteNombre);
       if (modo === 'CICLO') fileNameSuffix = `Ciclo_${ciclo}_G${grupo}`;
-      if (modo === 'AULA') fileNameSuffix = `Aula_${safe(ambienteNombreGlobal)}`;
+      if (modo === 'AULA') fileNameSuffix = `Aula_${safe(ambienteNombreGlobal ?? '')}`;
       const fileName = `Horario_${fileNameSuffix}_${safe(semestreNombre)}.xlsx`;
 
       const excelBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
