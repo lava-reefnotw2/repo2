@@ -165,11 +165,24 @@ export async function GET(request: Request) {
     `;
 
     await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
+    await page.emulateMediaType('screen');
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '40px', right: '40px', bottom: '40px', left: '40px' }
+      margin: { top: '18mm', right: '14mm', bottom: '18mm', left: '14mm' },
+      displayHeaderFooter: true,
+      headerTemplate: `
+        <div style="width: 100%; font-family: Inter, Segoe UI, Arial; font-size: 9px; color: #64748b; padding: 6px 14mm;">
+          <span>Reporte de Gestión y Cumplimiento</span>
+        </div>
+      `,
+      footerTemplate: `
+        <div style="width: 100%; font-family: Inter, Segoe UI, Arial; font-size: 9px; color: #64748b; padding: 6px 14mm; display: flex; justify-content: space-between;">
+          <span>Generado el ${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE')}</span>
+          <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+        </div>
+      `,
     });
 
     await browser.close();

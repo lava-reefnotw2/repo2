@@ -2,7 +2,17 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ['puppeteer', 'chartjs-node-canvas', 'canvas'],
+    serverComponentsExternalPackages: [
+      'puppeteer',
+      'puppeteer-core',
+      '@sparticuz/chromium',
+      'chartjs-node-canvas',
+      'canvas'
+    ],
+  },
+  webpack: (config) => {
+    config.externals.push('puppeteer', 'puppeteer-core', '@sparticuz/chromium');
+    return config;
   },
 }
 
