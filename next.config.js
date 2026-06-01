@@ -5,9 +5,7 @@ const nextConfig = {
     serverComponentsExternalPackages: [
       'puppeteer',
       'puppeteer-core',
-      '@sparticuz/chromium',
-      'chartjs-node-canvas',
-      'canvas'
+      '@sparticuz/chromium'
     ],
   },
   webpack: (config) => {

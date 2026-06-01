@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getDashboardStats } from '@/services/dashboard.service';
-import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 
 // Dynamic import function to avoid webpack bundling issues
 async function getPuppeteerAndChromium() {
@@ -20,10 +19,6 @@ async function getPuppeteerAndChromium() {
 
 export const dynamic = 'force-dynamic';
 
-const width = 600;
-const height = 350;
-const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height });
-
 export async function GET() {
   try {
     const stats = await getDashboardStats();
@@ -38,63 +33,7 @@ export async function GET() {
     const distribucionLabels = stats.dataDistribucion.map((d: any) => d.name);
     const distribucionData = stats.dataDistribucion.map((d: any) => d.cantidad);
 
-    // Render each chart as a base64 PNG
-    const chartOcupacionBuffer = await chartJSNodeCanvas.renderToBuffer({
-      type: 'bar',
-      data: {
-        labels: ocupacionLabels,
-        datasets: [{
-          label: 'Horas Semanales',
-          data: ocupacionData,
-          backgroundColor: '#8b5cf6',
-          borderRadius: 4
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, grid: { display: true } }, y: { grid: { display: false } } }
-      }
-    });
-
-    const chartCargaBuffer = await chartJSNodeCanvas.renderToBuffer({
-      type: 'doughnut',
-      data: {
-        labels: cargaLabels,
-        datasets: [{
-          data: cargaData,
-          backgroundColor: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
-      }
-    });
-
-    const chartDistribucionBuffer = await chartJSNodeCanvas.renderToBuffer({
-      type: 'bar',
-      data: {
-        labels: distribucionLabels,
-        datasets: [{
-          label: 'Cantidad de Docentes',
-          data: distribucionData,
-          backgroundColor: '#3b82f6',
-          borderRadius: 4
-        }]
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-
-    // Convert buffers to base64 strings
-    const chartOcupacionBase64 = chartOcupacionBuffer.toString('base64');
-    const chartCargaBase64 = chartCargaBuffer.toString('base64');
-    const chartDistribucionBase64 = chartDistribucionBuffer.toString('base64');
-
-    // 3. Launch Puppeteer - use @sparticuz/chromium on Vercel, regular puppeteer locally
+    // Launch Puppeteer
     const { isVercel, puppeteer, chromium } = await getPuppeteerAndChromium();
     let browser;
     if (isVercel) {
@@ -114,12 +53,13 @@ export async function GET() {
 
     const page = await browser.newPage();
 
-    // HTML Content with base64 images instead of Chart.js
+    // HTML Content with Chart.js
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="es">
         <head>
           <meta charset="UTF-8">
+          <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             body { 
@@ -202,10 +142,9 @@ export async function GET() {
               margin-bottom: 10px;
               color: #374151;
             }
-            .chart-img {
+            canvas {
               max-width: 100%;
               max-height: 100%;
-              object-fit: contain;
             }
 
             .chart-box-full {
@@ -253,28 +192,85 @@ export async function GET() {
           <div class="charts-row">
             <div class="chart-box">
               <div class="chart-title">Ocupación de Aulas (Top 10)</div>
-              <img src="data:image/png;base64,${chartOcupacionBase64}" alt="Ocupación de Aulas" class="chart-img">
+              <canvas id="chartOcupacion"></canvas>
             </div>
             <div class="chart-box">
               <div class="chart-title">Distribución de Carga Docente</div>
-              <img src="data:image/png;base64,${chartCargaBase64}" alt="Carga Docente" class="chart-img">
+              <canvas id="chartCarga"></canvas>
             </div>
           </div>
 
           <div class="chart-box-full">
             <div class="chart-title">Distribución de Docentes por Categoría</div>
-            <img src="data:image/png;base64,${chartDistribucionBase64}" alt="Distribución por Categoría" class="chart-img">
+            <canvas id="chartDistribucion"></canvas>
           </div>
 
           <div class="footer">
             Sistema de Gestión de Horarios - UNT &copy; ${new Date().getFullYear()} <br/>
             Generado el ${new Date().toLocaleDateString('es-PE')} a las ${new Date().toLocaleTimeString('es-PE')}
           </div>
+
+          <script>
+            // Chart 1: Ocupación de Aulas
+            new Chart(document.getElementById('chartOcupacion'), {
+              type: 'bar',
+              data: {
+                labels: ${JSON.stringify(ocupacionLabels)},
+                datasets: [{
+                  label: 'Horas Semanales',
+                  data: ${JSON.stringify(ocupacionData)},
+                  backgroundColor: '#8b5cf6',
+                  borderRadius: 4
+                }]
+              },
+              options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, grid: { display: true } }, y: { grid: { display: false } } }
+              }
+            });
+
+            // Chart 2: Carga Docente
+            new Chart(document.getElementById('chartCarga'), {
+              type: 'doughnut',
+              data: {
+                labels: ${JSON.stringify(cargaLabels)},
+                datasets: [{
+                  data: ${JSON.stringify(cargaData)},
+                  backgroundColor: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'],
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+              }
+            });
+
+            // Chart 3: Distribución
+            new Chart(document.getElementById('chartDistribucion'), {
+              type: 'bar',
+              data: {
+                labels: ${JSON.stringify(distribucionLabels)},
+                datasets: [{
+                  label: 'Cantidad de Docentes',
+                  data: ${JSON.stringify(distribucionData)},
+                  backgroundColor: '#3b82f6',
+                  borderRadius: 4
+                }]
+              },
+              options: {
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+              }
+            });
+          </script>
         </body>
       </html>
     `;
 
     await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
+    // Wait for charts to render
+    await new Promise(resolve => setTimeout(resolve, 1000));
     await page.emulateMediaType('screen');
 
     const pdfBuffer = await page.pdf({
