@@ -2,22 +2,6 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from '@sitelevelai/xlsx-js-style';
 
-// Dynamic import function to avoid webpack bundling issues
-async function getPuppeteerAndChromium() {
-  const isVercel = process.env.VERCEL === '1' || process.env.NEXT_PUBLIC_VERCEL === '1';
-  if (isVercel) {
-    // @ts-ignore
-    const chromiumModule = await import(/* webpackIgnore: true */ '@sparticuz/chromium');
-    // @ts-ignore
-    const puppeteer = await import(/* webpackIgnore: true */ 'puppeteer-core');
-    return { isVercel, puppeteer: puppeteer.default || puppeteer, chromium: chromiumModule.default || chromiumModule };
-  } else {
-    // @ts-ignore
-    const puppeteer = await import(/* webpackIgnore: true */ 'puppeteer');
-    return { isVercel, puppeteer: puppeteer.default || puppeteer, chromium: null };
-  }
-}
-
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
@@ -452,37 +436,7 @@ export async function GET(request: Request) {
             })
             .join("");
 
-    // 3. Launch Puppeteer - use @sparticuz/chromium on Vercel, regular puppeteer locally
-    const { isVercel, puppeteer, chromium } = await getPuppeteerAndChromium();
-    let browser;
-    const viewport = {
-      deviceScaleFactor: 1,
-      hasTouch: false,
-      height: 1080,
-      isLandscape: true,
-      isMobile: false,
-      width: 1920,
-    };
-    if (isVercel) {
-      const executablePath = await chromium.executablePath();
-      const args = await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" });
-      browser = await puppeteer.launch({
-        args,
-        executablePath,
-        headless: "shell",
-        defaultViewport: viewport
-      });
-    } else {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        defaultViewport: viewport
-      });
-    }
-
-    const page = await browser.newPage();
-
-    // 4. Professional HTML Content
+    // 4. Professional HTML Content (now returned directly to trigger print)
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="es">
@@ -490,7 +444,10 @@ export async function GET(request: Request) {
           <meta charset="UTF-8">
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-            @page { size: A4 landscape; margin: 18mm 14mm; }
+            @media print {
+              @page { size: A4 landscape; margin: 18mm 14mm; }
+              .no-print { display: none !important; }
+            }
             html, body { height: 100%; }
             body { font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; margin: 0; background: #ffffff; }
             .wrap { padding: 0; }
@@ -546,13 +503,26 @@ export async function GET(request: Request) {
             .empty { border: 1px dashed #cbd5e1; border-radius: 12px; padding: 22px; text-align: center; margin-top: 16px; }
             .empty-title { font-size: 14px; font-weight: 900; color: #0f172a; }
             .empty-sub { font-size: 11px; color: #64748b; margin-top: 6px; }
+            .print-btn {
+              position: fixed; bottom: 20px; right: 20px;
+              background-color: #2563eb; color: white;
+              padding: 12px 24px; border-radius: 8px;
+              font-family: 'Inter', sans-serif; font-weight: 600; font-size: 14px;
+              cursor: pointer; border: none;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); z-index: 9999;
+            }
+            .print-btn:hover { background-color: #1d4ed8; }
           </style>
+          <script>
+            window.onload = () => {
+              setTimeout(() => window.print(), 500);
+            }
+          </script>
         </head>
         <body>
           <div class="wrap">
             <div class="header">
               <div style="display: flex; gap: 16px; align-items: center;">
-                <img src="http://localhost:3000/logo-unt.png" alt="UNT" style="width: 48px; height: 48px; object-fit: contain; border-radius: 8px;">
                 <div class="brand">
                   <div class="title">Visualización de Horarios - UNT</div>
                   <div class="subtitle">Consulta y gestiona los horarios por período académico</div>
@@ -607,43 +577,21 @@ export async function GET(request: Request) {
               </table>
             `}
           </div>
+          <button class="print-btn no-print" onclick="window.print()">
+            <svg style="width:16px;height:16px;display:inline-block;vertical-align:middle;margin-right:8px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Imprimir / Guardar PDF
+          </button>
         </body>
       </html>
     `;
 
-    await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
-    await page.emulateMediaType('screen');
-
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      landscape: true,
-      printBackground: true,
-      margin: { top: '18mm', right: '14mm', bottom: '18mm', left: '14mm' },
-      displayHeaderFooter: true,
-      headerTemplate: `
-        <div style="width: 100%; font-family: Inter, Segoe UI, Arial; font-size: 9px; color: #64748b; padding: 6px 14mm;">
-          <span>Reporte de Horarios</span>
-        </div>
-      `,
-      footerTemplate: `
-        <div style="width: 100%; font-family: Inter, Segoe UI, Arial; font-size: 9px; color: #64748b; padding: 6px 14mm; display: flex; justify-content: space-between;">
-          <span>Generado el ${escapeHtml(new Date().toLocaleDateString('es-PE'))} ${escapeHtml(new Date().toLocaleTimeString('es-PE'))}</span>
-          <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
-        </div>
-      `,
-    });
-
-    await browser.close();
-
-    // Use standard Response to properly return binary data
-    return new Response(pdfBuffer as any, {
+    return new Response(htmlContent, {
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'inline; filename="Reporte_Horarios_UNT.pdf"',
+        'Content-Type': 'text/html; charset=utf-8',
       },
     });
   } catch (error) {
-    console.error("Error generando PDF:", error);
-    return NextResponse.json({ error: "No se pudo generar el reporte PDF" }, { status: 500 });
+    console.error("Error generando Vista PDF:", error);
+    return NextResponse.json({ error: "No se pudo generar el reporte" }, { status: 500 });
   }
 }
